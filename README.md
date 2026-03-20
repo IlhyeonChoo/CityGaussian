@@ -15,7 +15,13 @@
 
 </div>
 
-This repo contains official implementations of our series of work in large-scale scene reconstruction with Gaussian Splatting, Star ⭐ us if you like it!
+> **Repository Note**
+>
+> This repository is a locally maintained clone of the original [CityGaussian](https://github.com/DekuLiuTesla/CityGaussian) project, with small modifications for personal study and non-commercial research use.
+> It is not the official upstream repository and is not a GitHub fork.
+> Please refer to the upstream repository and papers below for the official codebase, releases, and project updates.
+
+The original CityGaussian repository contains the official implementations of this series of work in large-scale scene reconstruction with Gaussian Splatting.
 - [CityGaussianV2: Efficient and Geometrically Accurate Reconstruction for Large-Scale Scenes](https://arxiv.org/pdf/2411.00771)
 - [CityGaussian: Real-time High-quality Large-Scale Scene Rendering with Gaussians](https://arxiv.org/pdf/2404.01133) (ECCV 2024)
 
@@ -78,4 +84,3 @@ If you find this repository useful, please use the following BibTeX entry for ci
 ## 👏 Acknowledgements
 
 This repo benefits from [3DGS](https://github.com/graphdeco-inria/gaussian-splatting), [LightGaussian](https://github.com/VITA-Group/LightGaussian), [Gaussian Lightning](https://github.com/yzslab/gaussian-splatting-lightning). Thanks for their great work!
-

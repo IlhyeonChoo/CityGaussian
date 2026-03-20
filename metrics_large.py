@@ -27,10 +27,10 @@ def readImages(renders_dir, gt_dir):
     gts = []
     image_names = []
     for fname in os.listdir(renders_dir):
-        render = Image.open(renders_dir / fname)
-        gt = Image.open(gt_dir / fname)
-        renders.append(tf.to_tensor(render).unsqueeze(0)[:, :3, :, :])
-        gts.append(tf.to_tensor(gt).unsqueeze(0)[:, :3, :, :])
+        with Image.open(renders_dir / fname) as render:
+            renders.append(tf.to_tensor(render).unsqueeze(0)[:, :3, :, :])
+        with Image.open(gt_dir / fname) as gt:
+            gts.append(tf.to_tensor(gt).unsqueeze(0)[:, :3, :, :])
         image_names.append(fname)
     return renders, gts, image_names
 

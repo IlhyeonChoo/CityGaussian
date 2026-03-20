@@ -57,7 +57,7 @@ def loadCam(args, id, cam_info, resolution_scale):
                   image_name=cam_info.image_name, uid=id, data_device=args.data_device)
 
 def loadCam_woImage(args, id, cam_info, resolution_scale):
-    orig_w, orig_h = cam_info.image.size
+    orig_w, orig_h = cam_info.width, cam_info.height
 
     if args.resolution in [1, 2, 4, 8]:
         resolution = round(orig_w/(resolution_scale * args.resolution)), round(orig_h/(resolution_scale * args.resolution))
