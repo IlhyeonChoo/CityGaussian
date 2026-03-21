@@ -1,0 +1,86 @@
+diff --git a/metrics.py b/metrics.py
+index 1bd4aa6..61c1337 100644
+--- a/metrics.py
++++ b/metrics.py
+@@ -27,10 +27,10 @@ def readImages(renders_dir, gt_dir):
+     gts = []
+     image_names = []
+     for fname in os.listdir(renders_dir):
+-        render = Image.open(renders_dir / fname)
+-        gt = Image.open(gt_dir / fname)
+-        renders.append(tf.to_tensor(render).unsqueeze(0)[:, :3, :, :].cuda())
+-        gts.append(tf.to_tensor(gt).unsqueeze(0)[:, :3, :, :].cuda())
++        with Image.open(renders_dir / fname) as render:
++            renders.append(tf.to_tensor(render).unsqueeze(0)[:, :3, :, :].cuda())
++        with Image.open(gt_dir / fname) as gt:
++            gts.append(tf.to_tensor(gt).unsqueeze(0)[:, :3, :, :].cuda())
+         image_names.append(fname)
+     return renders, gts, image_names
+ 
+diff --git a/scene/dataset_readers.py b/scene/dataset_readers.py
+index 75cb289..bcb6ec1 100644
+--- a/scene/dataset_readers.py
++++ b/scene/dataset_readers.py
+@@ -109,7 +109,6 @@ def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder):
+ 
+         image_path = os.path.join(images_folder, os.path.basename(extr.name))
+         image_name = os.path.basename(image_path).split(".")[0]
+-        image = Image.open(image_path)
+ 
+         cam_info = CameraInfo(
+             uid=uid,
+@@ -117,7 +116,7 @@ def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder):
+             T=T,
+             FovY=FovY,
+             FovX=FovX,
+-            image=image,
++            image=None,
+             image_path=image_path,
+             image_name=image_name,
+             width=width,
+@@ -244,9 +243,8 @@ def readCamerasFromTransforms(path, transformsfile, white_background, extension=
+ 
+             image_path = os.path.join(path, cam_name)
+             image_name = Path(cam_name).stem
+-            image = Image.open(image_path)
+-
+-            im_data = np.array(image.convert("RGBA"))
++            with Image.open(image_path) as image:
++                im_data = np.array(image.convert("RGBA"))
+ 
+             bg = np.array([1, 1, 1]) if white_background else np.array([0, 0, 0])
+ 
+diff --git a/utils/camera_utils.py b/utils/camera_utils.py
+index a5b24f8..ab4fffb 100644
+--- a/utils/camera_utils.py
++++ b/utils/camera_utils.py
+@@ -13,12 +13,19 @@ from scene.cameras import Camera
+ import numpy as np
+ from utils.general_utils import PILtoTorch
+ from utils.graphics_utils import fov2focal
++from PIL import Image
+ 
+ WARNED = False
+ 
+ 
+ def loadCam(args, id, cam_info, resolution_scale):
+-    orig_w, orig_h = cam_info.image.size
++    if cam_info.image is None:
++        with Image.open(cam_info.image_path) as pil_image:
++            orig_w, orig_h = pil_image.size
++            source_image = pil_image.copy()
++    else:
++        source_image = cam_info.image
++        orig_w, orig_h = source_image.size
+ 
+     if args.resolution in [1, 2, 4, 8]:
+         resolution = round(orig_w / (resolution_scale * args.resolution)), round(
+@@ -43,7 +50,7 @@ def loadCam(args, id, cam_info, resolution_scale):
+         scale = float(global_down) * float(resolution_scale)
+         resolution = (int(orig_w / scale), int(orig_h / scale))
+ 
+-    resized_image_rgb = PILtoTorch(cam_info.image, resolution)
++    resized_image_rgb = PILtoTorch(source_image, resolution)
+ 
+     gt_image = resized_image_rgb[:3, ...]
+     loaded_mask = None
