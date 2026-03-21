@@ -4,8 +4,9 @@
 > CNU26-3DGS Research Group | 충남대학교 컴퓨터공학과 | 2026.03 ~
 
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![CUDA 11.8+](https://img.shields.io/badge/CUDA-11.8%2B-green.svg)](https://developer.nvidia.com/cuda-toolkit)
+[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
+[![CUDA 12.8](https://img.shields.io/badge/CUDA-12.8-green.svg)](https://developer.nvidia.com/cuda-toolkit)
+[![PyTorch 2.7.1](https://img.shields.io/badge/PyTorch-2.7.1-red.svg)](https://pytorch.org/)
 
 ---
 
@@ -107,31 +108,45 @@ citygs-boundary-smoothing/
 
 ## 환경 설정
 
-### 사전 요구 사항
+### 원본 논문 환경 (CityGaussian V1 공식)
 
-- Python 3.8+
-- CUDA 11.8+
-- PyTorch 2.0+
+- Python 3.8+, CUDA 11.8+, PyTorch 2.0+
 - GPU: NVIDIA RTX 3090 / A6000 이상 (24GB+ VRAM 권장)
+
+### 현재 실험 환경
+
+| 항목 | 버전 |
+|------|------|
+| Python | 3.11 |
+| PyTorch | 2.7.1+cu128 |
+| CUDA | 12.8 |
+| TORCH_CUDA_ARCH_LIST | 12.0 |
+| 가상환경 | `.venv/` (venv 기반) |
+| GPU | *(LOCAL_SETUP_NOTES.md 참조)* |
+
+> **참고**: 원본 논문은 CUDA 11.8 / PyTorch 2.0 기준이나, 본 실험에서는 CUDA 12.8 환경에 맞춰
+> submodules(`diff-gaussian-rasterization`, `simple-knn`)에 호환성 패치를 적용하여 사용한다.
+> 패치 세부 사항은 `third_party_patches/README.md` 및 `LOCAL_SETUP_NOTES.md` 참조.
 
 ### 설치
 
 ```bash
-# 1. CityGaussian V1 공식 코드 클론 (submodule)
-git clone --recursive https://github.com/CNU26-3DGS/citygs-boundary-smoothing.git
-cd citygs-boundary-smoothing
+# 1. 레포 클론
+git clone --recursive https://github.com/IlhyeonChoo/CityGaussian.git
+cd CityGaussian
 
-# 2. Conda 환경 생성
-conda create -n citygs-boundary python=3.8 -y
-conda activate citygs-boundary
+# 2. 가상환경 생성
+python3.11 -m venv .venv
+source .venv/bin/activate
 
-# 3. PyTorch 설치 (CUDA 버전에 맞게 조정)
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+# 3. PyTorch 설치 (CUDA 12.8)
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 
 # 4. 의존성 설치
 pip install -r requirements.txt
 
-# 5. 3DGS 서브모듈 빌드
+# 5. 서브모듈 패치 적용 및 빌드
+./scripts/apply_third_party_patches.sh
 pip install submodules/diff-gaussian-rasterization
 pip install submodules/simple-knn
 ```
