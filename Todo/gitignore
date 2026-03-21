@@ -1,5 +1,5 @@
 # ============================================================
-# OBC-CityGS .gitignore
+# CityGS Boundary Smoothing - .gitignore
 # ============================================================
 
 # ======================== Data & Output =====================
@@ -14,9 +14,6 @@ output/
 # 학습 로그
 logs/
 !logs/.gitkeep
-
-# 평가 결과 (대용량)
-eval/
 
 # ======================== 3DGS Artifacts ===================
 # Gaussian Splatting 모델 파일
@@ -70,23 +67,24 @@ checkpoint_*/
 # ======================== Jupyter =========================
 .ipynb_checkpoints/
 *.ipynb_meta
-notebooks/
 
 # ======================== IDE / Editor ====================
+# VSCode
 .vscode/
 *.code-workspace
+
+# PyCharm
 .idea/
+
+# Vim
 *.swp
 *.swo
 *~
-.history
 
-# ======================== OS ==============================
 # macOS
 .DS_Store
 .AppleDouble
 .LSOverride
-._*
 
 # Windows
 Thumbs.db
@@ -103,26 +101,10 @@ Desktop.ini
 *.mov
 *.mkv
 
-# 대용량 렌더링 결과
+# 대용량 이미지 (데이터셋)
+# 주의: tools/ 에서 생성하는 시각화 이미지는 추적해도 됨
 renders/
 error_maps/
-
-# ======================== CityGS V1 전용 =================
-# 기존 V1 레포에서 사용하던 항목
-diff_rasterization/diff_rast.egg-info
-diff_rasterization/dist
-tensorboard_3d
-screenshots
-GaussianViewTest
-debug
-plug_in
-run_gpu*
-WezTerm
-
-# ======================== WandB / TensorBoard =============
-wandb/
-runs/
-events.out.tfevents.*
 
 # ======================== Misc ============================
 # 압축 파일
@@ -130,6 +112,11 @@ events.out.tfevents.*
 *.tar
 *.tar.gz
 *.7z
+
+# WandB / TensorBoard
+wandb/
+runs/
+events.out.tfevents.*
 
 # 임시 파일
 tmp/
@@ -141,16 +128,15 @@ temp/
 *.bin
 *.dat
 
-# Config 임시/과거 버전
-config/dump
-config/past
-
 # ======================== 예외 (Git 추적 대상) ============
-# config, scripts, docs, Todo는 반드시 추적
-!config/**
+# configs는 반드시 추적
+!configs/**
+
+# 스크립트는 반드시 추적
 !scripts/**
+
+# docs 내 문서는 추적
 !docs/**
-!Todo/**
 
 # .gitkeep 파일은 추적 (빈 디렉토리 유지용)
 !.gitkeep
