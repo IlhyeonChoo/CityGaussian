@@ -58,13 +58,23 @@ CityGaussian V1의 학습 파이프라인:
 
 #### 전략 A (중첩 블록 분할) 관련
 
+**원본 수정 (최소한)**:
+
 | 파일 | 수정 포인트 |
 |------|-------------|
-| `arguments/__init__.py` | `ModelParams`에 `overlap_ratio` (float, default=0.0), `overlap_freeze` (bool), `blend_mode` (str) 추가 |
-| `data_partition.py` | `block_partitioning()`에서 AABB 계산 시 overlap 영역 확장 로직 |
-| `utils/large_utils.py` | `block_filtering()`에 core/transition/overlap 구역 구분 함수 추가 |
-| `train_large.py` | overlap 영역 Gaussian에 대한 LR 감쇠 또는 freeze 처리 |
-| `merge.py` | soft blending (거리 기반 opacity 감쇠) + 중복 Gaussian pruning |
+| `arguments/__init__.py` | `ModelParams`에 `overlap_ratio` (float, default=0.0), `overlap_freeze` (bool), `freeze_after_iter` (int, default=3000), `blend_mode` (str, default="hard"), `prune_duplicates` (bool, default=False), `duplicate_threshold` (float, default=0.01) 추가 |
+
+**신규 파일 (루트 wrapper 방식)**:
+
+| 파일 | 역할 |
+|------|------|
+| `utils/overlap_utils.py` | 핵심 유틸: zone 분류, blend weight 계산, 중복 탐지. `large_utils.py`의 `contract_to_unisphere()` 재사용 |
+| `data_partition_overlap.py` | 원본 `data_partition.py`의 `block_partitioning()` import + overlap-aware 카메라 할당 wrapper |
+| `train_large_overlap.py` | 원본 `train_large.py` 기반 학습 루프 + overlap zone gradient freeze 삽입 |
+| `merge_overlap.py` | 원본 `merge.py` 패턴 기반 + soft blending + duplicate pruning |
+
+> **원본 `data_partition.py`, `utils/large_utils.py`, `train_large.py`, `merge.py`는 수정하지 않는다.**
+> 실험 로직은 모두 신규 파일에 구현하여 G0 baseline 파이프라인을 보존한다.
 
 #### 전략 B (Coarse-to-Fine 학습) 관련
 
@@ -97,15 +107,20 @@ CityGaussian V1의 학습 파이프라인:
 실험 config는 기존 config를 기반으로 하되, 실험 파라미터를 추가한다.
 
 ```yaml
-# 예시: config/overlap_15_g1.yaml
+# 예시: config/g1_overlap15.yaml
 # 기존 mc_small_aerial_c36.yaml 기반 + overlap 파라미터 추가
 model_params:
-  source_path: "data/matrix_city/aerial"
-  pretrain_path: "output/mc_small_aerial_coarse"
+  source_path: "data/matrix_city/aerial/train/block_all"
+  pretrain_path: "output/mc_small_aerial_coarse/point_cloud/iteration_30000"
+  partition_name: "g1_overlap15"
   block_dim: [6, 6, 1]
+  aabb: [-3.5, -4, -10, 4.5, 2, 10]
   overlap_ratio: 0.15        # 전략 A 파라미터
   overlap_freeze: true
+  freeze_after_iter: 3000
   blend_mode: "soft"
+  prune_duplicates: true
+  duplicate_threshold: 0.01
   # ... (기존 파라미터 유지)
 
 optim_params:

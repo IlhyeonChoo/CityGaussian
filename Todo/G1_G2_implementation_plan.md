@@ -8,7 +8,8 @@
 
 CityGaussian V1은 블록별 독립 학습 후 단순 concat으로 병합하기 때문에 블록 경계에서 seam/color mismatch/density gap 아티팩트가 발생한다. G1(overlap 15%), G2(overlap 25%) 실험은 블록을 중첩 확장하고, 중첩 영역 freeze + soft blending merge로 경계 아티팩트를 완화하는 전략이다.
 
-**핵심 제약**: 원본 파일은 수정하지 않고, 새 파일만 생성한다 (G0 baseline 재현 가능 유지).
+**핵심 제약**: 원본 파일은 최소한으로 수정하고, 실험 로직은 새 파일로 분리한다 (G0 baseline 재현 가능 유지).
+- **유일한 원본 수정**: `arguments/__init__.py`에 overlap 파라미터 추가 (기본값 0으로 기존 동작 보존)
 
 ---
 
@@ -25,7 +26,24 @@ CityGaussian V1은 블록별 독립 학습 후 단순 concat으로 병합하기 
 
 ---
 
-## 생성할 파일 (8개, 원본 수정 0개)
+## 수정/생성할 파일 (원본 수정 1개 + 신규 10개)
+
+### 0. `arguments/__init__.py` (원본 수정) -- 파라미터 추가
+
+`ModelParams`에 overlap 관련 파라미터를 명시적으로 추가한다. 기본값은 기존 동작을 보존하도록 설정.
+
+```python
+# ModelParams에 추가할 필드
+overlap_ratio: float = 0.0          # 0.0=기존 동작, 0.15=G1, 0.25=G2
+overlap_freeze: bool = False         # True: overlap zone Gaussian freeze
+freeze_after_iter: int = 3000        # freeze 시작 iteration
+blend_mode: str = "hard"             # "hard"=기존 concat, "soft"=거리 기반 감쇠
+prune_duplicates: bool = False       # merge 시 중복 Gaussian 제거
+duplicate_threshold: float = 0.01    # 중복 판정 거리
+```
+
+> `overlap_ratio=0.0`, `blend_mode="hard"` 일 때 기존 V1과 동일하게 동작하므로 G0 baseline에 영향 없음.
+> `--help`에서 파라미터 확인 가능, config YAML에서도 명시적으로 사용 가능.
 
 ### 1. `utils/overlap_utils.py` (~200줄) -- 핵심 유틸리티
 
@@ -98,9 +116,24 @@ model_params:
   duplicate_threshold: 0.01
 ```
 
-> 새 파라미터는 `getattr(lp, 'overlap_ratio', 0.0)` 방식으로 읽음. `arguments/__init__.py` 수정 불필요 (YAML의 임의 키가 `extract_args`를 통해 attribute로 설정됨).
+> 파라미터는 `arguments/__init__.py`의 `ModelParams`에 명시적으로 정의되므로, config YAML에서 바로 사용 가능. `--help`에서도 확인 가능.
 
-### 7. `config/smoke_test/g1_overlap15_smoke.yaml`
+### 7-9. 평가 도구 (`tools/` 디렉토리, 각 ~100줄)
+
+| 파일 | 역할 |
+|------|------|
+| `tools/boundary_lpips.py` | **Primary Metric**. 블록 경계에 해당하는 이미지 영역을 crop하여 LPIPS 계산. 경계 위치는 partition 정보 + 카메라 projection으로 결정 |
+| `tools/boundary_crop.py` | 블록 경계를 이미지 좌표로 projection하여 경계 영역 strip을 crop하는 유틸리티. `boundary_lpips.py`와 시각 비교 모두에서 사용 |
+| `tools/error_map.py` | GT 이미지와 렌더링 이미지의 pixel-wise 차이를 heatmap으로 시각화. 경계 영역 하이라이트 옵션 포함 |
+
+**추가 도구 (선택적, 후순위):**
+
+| 파일 | 역할 |
+|------|------|
+| `tools/visualize_partitions.py` | 3D 공간에서 블록 경계와 overlap 영역을 시각화 (matplotlib 3D 또는 open3d) |
+| `tools/plot_results.py` | 실험 그룹 간 메트릭 비교 bar chart / table 생성 |
+
+### 10. `config/smoke_test/g1_overlap15_smoke.yaml`
 
 - `iterations: 100`, `densify_until_iter: 50`
 - `block_dim: [2, 2, 1]` (4블록, 빠른 검증)
@@ -133,19 +166,23 @@ python metrics_large.py -m output/g1_overlap15 -t val
 ## 구현 순서
 
 ```
-Phase 1: utils/overlap_utils.py
+Phase 1: arguments/__init__.py 수정 (overlap 파라미터 추가)
     ↓
-Phase 2: config 파일 3개 (g1, g2, smoke)
+Phase 2: utils/overlap_utils.py (핵심 유틸리티)
     ↓
-Phase 3: data_partition_overlap.py
+Phase 3: config 파일 3개 (g1, g2, smoke)
     ↓
-Phase 4: train_large_overlap.py
+Phase 4: data_partition_overlap.py
     ↓
-Phase 5: merge_overlap.py
+Phase 5: train_large_overlap.py
     ↓
-Phase 6: scripts/run_overlap_experiment.sh
+Phase 6: merge_overlap.py
     ↓
-Phase 7: Smoke Test 실행 및 검증
+Phase 7: 평가 도구 (boundary_crop → boundary_lpips → error_map)
+    ↓
+Phase 8: scripts/run_overlap_experiment.sh
+    ↓
+Phase 9: Smoke Test 실행 및 검증
 ```
 
 ---
@@ -174,17 +211,19 @@ Phase 7: Smoke Test 실행 및 검증
 
 ---
 
-## 주요 참조 파일 (원본, 읽기 전용)
+## 주요 참조 파일
 
-| 파일 | 참조 이유 |
-|------|-----------|
-| `utils/large_utils.py` | `contract_to_unisphere()` import, `block_filtering()` 참조 (max_z 버그 주의) |
-| `train_large.py` | `training()` 함수 구조 복제 기반 |
-| `scene/__init__.py` | `LargeScene.save()` 로직 참조 (expanded bounds 저장 구현 시) |
-| `merge.py` | `blockMerge()` 패턴 참조 |
-| `data_partition.py` | `block_partitioning()` import 및 호출 |
-| `config/mc_small_aerial_c36.yaml` | G1/G2 config 템플릿 |
-| `scene/gaussian_model.py` | optimizer 구조, param group 이름, `_opacity` 저장 방식 참조 |
+| 파일 | 참조 이유 | 수정 여부 |
+|------|-----------|-----------|
+| `arguments/__init__.py` | overlap 파라미터 추가 | **수정** |
+| `utils/large_utils.py` | `contract_to_unisphere()` import, `block_filtering()` 참조 (max_z 버그 주의) | 읽기 전용 |
+| `train_large.py` | `training()` 함수 구조 복제 기반 | 읽기 전용 |
+| `scene/__init__.py` | `LargeScene.save()` 로직 참조 (expanded bounds 저장 구현 시) | 읽기 전용 |
+| `merge.py` | `blockMerge()` 패턴 참조 | 읽기 전용 |
+| `data_partition.py` | `block_partitioning()` import 및 호출 | 읽기 전용 |
+| `config/mc_small_aerial_c36.yaml` | G1/G2 config 템플릿 | 읽기 전용 |
+| `scene/gaussian_model.py` | optimizer 구조, param group 이름, `_opacity` 저장 방식 참조 | 읽기 전용 |
+| `metrics_large.py` | 메트릭 계산 흐름 참조 (boundary_lpips 구현 시) | 읽기 전용 |
 
 ---
 

@@ -28,80 +28,62 @@
 
 ## 프로젝트 구조
 
+기존 CityGaussian V1 루트 구조를 유지하면서, 실험용 파일을 루트 레벨 wrapper로 추가한다.
+
 ```
-citygs-boundary-smoothing/
-├── configs/                        # 실험 설정 파일 (YAML)
-│   ├── baseline_g0.yaml            # G0: CityGaussian V1 Baseline
-│   ├── overlap_15_g1.yaml          # G1: 전략 A (Overlap 15%)
-│   ├── overlap_25_g2.yaml          # G2: 전략 A (Overlap 25%)
-│   ├── c2f_blockwise_g3.yaml       # G3: 전략 B (Block-wise C2F)
-│   ├── combined_g4.yaml            # G4: 전략 A+B 결합
-│   └── smoke_test/                 # Smoke Test 설정
-│       ├── smoke_overlap.yaml
-│       └── smoke_c2f.yaml
+CityGaussianV1/
+├── # === CityGS V1 원본 (수정 최소화) ===
+├── train_large.py                  # 학습 메인 (block-wise 학습)
+├── data_partition.py               # 블록 파티셔닝
+├── merge.py                        # 블록 병합
+├── render_large.py                 # 렌더링
+├── metrics_large.py                # 메트릭 계산
+├── arguments/__init__.py           # 파라미터 정의 (overlap 파라미터 추가)
+├── scene/                          # Scene, GaussianModel, Camera
+├── gaussian_renderer/              # render(), render_large()
+├── utils/                          # large_utils, loss_utils 등
 │
-├── src/                            # 핵심 소스 코드
-│   ├── partition/                  # 블록 파티셔닝 모듈
-│   │   ├── __init__.py
-│   │   ├── base_partition.py       # CityGS V1 기본 파티셔닝
-│   │   └── overlap_partition.py    # 전략 A: 중첩 블록 파티셔닝
-│   │
-│   ├── training/                   # 학습 파이프라인
-│   │   ├── __init__.py
-│   │   ├── block_trainer.py        # 블록별 학습기 (기본)
-│   │   ├── coarse_trainer.py       # 전략 B: Coarse Stage 학습
-│   │   ├── fine_trainer.py         # 전략 B: Fine Stage 학습
-│   │   └── overlap_handler.py      # 전략 A: Overlap 영역 LR/Freeze 처리
-│   │
-│   ├── merge/                      # 병합 모듈
-│   │   ├── __init__.py
-│   │   ├── base_merge.py           # 기본 블록 병합
-│   │   ├── soft_blending.py        # 전략 A: 거리 기반 opacity 감쇠
-│   │   └── duplicate_pruning.py    # 전략 A: 중복 Gaussian 제거
-│   │
-│   └── evaluation/                 # 평가 모듈
-│       ├── __init__.py
-│       ├── metrics.py              # PSNR, SSIM, LPIPS 계산
-│       ├── boundary_lpips.py       # Boundary LPIPS 측정
-│       └── boundary_crop.py        # 경계 영역 crop 유틸리티
+├── # === 전략 A: Overlap 실험용 (신규) ===
+├── data_partition_overlap.py       # 전략 A: overlap-aware 파티셔닝
+├── train_large_overlap.py          # 전략 A: overlap freeze 학습
+├── merge_overlap.py                # 전략 A: soft blending + dedup merge
+├── utils/overlap_utils.py          # 전략 A: 핵심 유틸리티
+│
+├── config/                         # 실험 설정 (YAML)
+│   ├── mc_small_aerial_c36.yaml    # G0 baseline 블록 학습 설정
+│   ├── mc_small_aerial_coarse.yaml # Coarse 학습 설정
+│   ├── g1_overlap15.yaml           # G1: 전략 A (Overlap 15%)
+│   ├── g2_overlap25.yaml           # G2: 전략 A (Overlap 25%)
+│   └── smoke_test/                 # Smoke Test 설정
+│       └── g1_overlap15_smoke.yaml
 │
 ├── scripts/                        # 실행 스크립트
-│   ├── run_baseline.sh             # G0 Baseline 학습/평가
-│   ├── run_overlap.sh              # G1/G2 전략 A 학습/평가
-│   ├── run_c2f.sh                  # G3 전략 B 학습/평가
-│   ├── run_combined.sh             # G4 결합 전략 학습/평가
-│   ├── run_smoke_test.sh           # Smoke Test 실행
-│   └── run_all_experiments.sh      # 전체 실험 일괄 실행 (3회 반복)
+│   ├── run_overlap_experiment.sh   # G1/G2 전략 A E2E 실행
+│   └── (기존 스크립트 유지)
 │
 ├── tools/                          # 보조 도구
-│   ├── visualize_partitions.py     # 블록 파티셔닝 시각화
-│   ├── visualize_boundary.py       # 경계 영역 렌더링 시각화
-│   ├── error_map.py                # GT 대비 Error Map 생성
-│   ├── render_trajectory.py        # 카메라 궤적 렌더링 영상 생성
-│   └── plot_results.py             # 실험 결과 그래프 생성
+│   ├── boundary_lpips.py           # Boundary LPIPS 측정 (신규)
+│   ├── boundary_crop.py            # 경계 영역 crop (신규)
+│   ├── error_map.py                # GT 대비 Error Map 생성 (신규)
+│   ├── visualize_partitions.py     # 파티셔닝 시각화 (신규)
+│   ├── plot_results.py             # 실험 결과 그래프 (신규)
+│   └── (기존 도구 유지)
 │
-├── docs/                           # 문서
-│   └── research_proposal.pdf       # 연구 계획서
+├── Todo/                           # 연구 계획 및 구현 계획
+├── docs/                           # 실험 보고서, 진행 기록
 │
 ├── data/                           # 데이터셋 (Git 미추적)
-│   ├── matrixcity_aerial_small/
-│   ├── rubble/
-│   └── custom/
+│   └── matrix_city/aerial/         # MatrixCity Small Aerial
 │
 ├── output/                         # 학습 결과물 (Git 미추적)
-│   ├── G0_baseline/
-│   ├── G1_overlap_15/
-│   ├── G2_overlap_25/
-│   ├── G3_c2f_blockwise/
-│   └── G4_combined/
+│   ├── mc_small_aerial_coarse/     # G0 Coarse 결과
+│   ├── mc_small_aerial_c36/        # G0 Block 결과
+│   ├── g1_overlap15/               # G1 결과
+│   └── g2_overlap25/               # G2 결과
 │
-├── logs/                           # 학습 로그 (Git 미추적)
-│
-├── .gitignore
-├── README.md
-├── requirements.txt
-├── setup.py
-└── LICENSE
+├── CLAUDE.md                       # AI 분석/관리자 지침
+├── AGENTS.md                       # AI 구현 에이전트 지침
+└── LOCAL_SETUP_NOTES.md            # 로컬 환경 설정 기록
 ```
 
 ---
@@ -154,11 +136,11 @@ pip install submodules/simple-knn
 ### 데이터 준비
 
 ```bash
-mkdir -p data/matrixcity_aerial_small
-
-# MatrixCity Aerial Small 데이터셋 다운로드
+# MatrixCity Small Aerial 변환 (raw → V1 형식)
 # 공식 링크: https://city-super.github.io/matrixcity/
 # COLMAP 결과: https://huggingface.co/datasets/dylanebert/CityGaussian
+python tools/prepare_matrixcity_small_aerial_v1.py
+# 결과: data/matrix_city/aerial/train/block_all (train 7672장, test 152장)
 ```
 
 ---
@@ -167,17 +149,35 @@ mkdir -p data/matrixcity_aerial_small
 
 ### Smoke Test (빠른 검증)
 
-본격 실험 전 구현 검증 및 기본 경향성 확인을 위한 Smoke Test입니다.
+본격 실험 전 파이프라인 동작 확인 및 기본 경향성 확인을 위한 Smoke Test입니다.
+
+**1단계: 파이프라인 동작 확인** (2x2 블록, 100 iter)
+
+각 단계가 에러 없이 완료되는지 확인한다.
 
 ```bash
-# 전략 A Smoke Test (2x2 블록, overlap=15%, 5000 iter)
-bash scripts/run_smoke_test.sh --strategy overlap
+SMOKE_CFG=config/smoke_test/g1_overlap15_smoke.yaml
 
-# 전략 B Smoke Test (Coarse 1000 iter + Fine 5000 iter)
-bash scripts/run_smoke_test.sh --strategy c2f
+# Partition → 블록별 학습 → Merge → Render → Metric 전체 파이프라인
+python data_partition_overlap.py --config $SMOKE_CFG
+for block_id in 0 1 2 3; do
+  python train_large_overlap.py --config $SMOKE_CFG --block_id $block_id
+done
+python merge_overlap.py --config $SMOKE_CFG
+python render_large.py --config $SMOKE_CFG
+python metrics_large.py -m output/g1_overlap15_smoke -t val
 ```
 
-**Smoke Test 성공 기준:**
+**1단계 성공 기준:**
+- ✅ 전 단계 에러 없이 완료
+- ✅ zone mask 출력: core/overlap 비율이 합리적
+- ✅ merged PLY 생성됨, 렌더링 이미지 출력됨
+
+**2단계: 품질 경향성 확인** (본 실험 config, 단일 블록 축약 학습)
+
+> 본 실험 전 전체 36블록을 짧게 돌려 경향을 확인한다. 상세 기준은 `Todo/G1_G2_implementation_plan.md`의 검증 계획 참조.
+
+**2단계 성공 기준:**
 - ✅ **Pass**: Loss 정상 수렴, 경계 영역에서 baseline 대비 시각적 개선 관찰
 - ⚠️ **Conditional Pass**: 동작하나 개선 효과 미미 → 하이퍼파라미터 튜닝 필요
 - ❌ **Fail**: 학습 발산 또는 baseline보다 악화 → 설계 재검토
@@ -185,39 +185,33 @@ bash scripts/run_smoke_test.sh --strategy c2f
 ### 본 실험
 
 ```bash
-# G0: Baseline (CityGaussian V1 재현)
-bash scripts/run_baseline.sh --config configs/baseline_g0.yaml
+# G0: Baseline (CityGaussian V1 원본 파이프라인)
+python train_large.py --config config/mc_small_aerial_coarse.yaml          # Coarse
+python data_partition.py --config config/mc_small_aerial_c36.yaml          # Partition
+python train_large.py --config config/mc_small_aerial_c36.yaml --block_id N  # Block 학습
+python merge.py --config config/mc_small_aerial_c36.yaml                   # Merge
 
 # G1: 전략 A - Overlap 15%
-bash scripts/run_overlap.sh --config configs/overlap_15_g1.yaml
+bash scripts/run_overlap_experiment.sh config/g1_overlap15.yaml
 
 # G2: 전략 A - Overlap 25%
-bash scripts/run_overlap.sh --config configs/overlap_25_g2.yaml
-
-# G3: 전략 B - Block-wise Coarse-to-Fine
-bash scripts/run_c2f.sh --config configs/c2f_blockwise_g3.yaml
-
-# G4: 전략 A+B 결합
-bash scripts/run_combined.sh --config configs/combined_g4.yaml
-
-# 전체 실험 일괄 실행 (3회 반복, random seed 변경)
-bash scripts/run_all_experiments.sh --repeats 3
+bash scripts/run_overlap_experiment.sh config/g2_overlap25.yaml
 ```
 
 ### 평가
 
 ```bash
 # 전체 장면 메트릭 (PSNR / SSIM / LPIPS)
-python src/evaluation/metrics.py --output_dir output/G1_overlap_15 --gt_dir data/matrixcity_aerial_small/test
+python metrics_large.py -m output/g1_overlap15 -t val
 
 # Boundary LPIPS (경계 영역 crop, 64~128px)
-python src/evaluation/boundary_lpips.py --output_dir output/G1_overlap_15 --crop_size 128
+python tools/boundary_lpips.py --output_dir output/g1_overlap15 --crop_size 128
 
 # Error Map 시각화
-python tools/error_map.py --pred output/G1_overlap_15/renders --gt data/matrixcity_aerial_small/test
+python tools/error_map.py --pred output/g1_overlap15/val/ours_30000/renders --gt output/g1_overlap15/val/ours_30000/gt
 
 # 결과 비교 그래프 생성
-python tools/plot_results.py --results_dir output/ --groups G0 G1 G2 G3 G4
+python tools/plot_results.py --results_dir output/ --groups mc_small_aerial_c36 g1_overlap15 g2_overlap25
 ```
 
 ---
@@ -251,11 +245,9 @@ python tools/plot_results.py --results_dir output/ --groups G0 G1 G2 G3 G4
 
 ## 데이터셋
 
-| 데이터셋 | 용도 | 규모 |
-|----------|------|------|
-| [MatrixCity Aerial Small](https://city-super.github.io/matrixcity/) | Smoke Test + 주요 실험 | ~300 images |
-| [Rubble (Mega-NeRF)](https://meganerf.cmusatyalab.org/) | 보조 실험 | ~1,600 images |
-| 자체 캡처 | 일반화 테스트 | TBD |
+| 데이터셋 | 용도 | 규모 | 로컬 경로 |
+|----------|------|------|-----------|
+| [MatrixCity Aerial Small](https://city-super.github.io/matrixcity/) | Smoke Test + 주요 실험 | train 7672장, test 152장 | `data/matrix_city/aerial/` |
 
 ---
 

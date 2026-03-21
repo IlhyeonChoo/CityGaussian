@@ -179,27 +179,44 @@ CityGaussianV1/
 - **기존 V1 코드는 최대한 보존**: 원본 파이프라인의 기존 기능이 깨지지 않도록 한다
 - **확장 방식으로 수정**: 새 파라미터는 기본값으로 기존 동작을 유지하도록 설계
 - **실험 config로 분리**: 전략별 차이는 코드 분기가 아니라 config 파라미터로 제어
-- **브랜치 전략**: `V1-original` (원본 보존) → `experiment/boundary-smoothing` (실험 진행)
+- **브랜치 전략**: `V1-original` (원본 보존) → `experiment/obc-citygs` (실험 진행)
 
 ### 수정 대상 파일과 이유
 
+**원본 수정 (최소한)**:
+
 | 파일 | 수정 이유 | 영향 범위 |
 |------|-----------|-----------|
-| `arguments/__init__.py` | overlap_ratio, coarse_iterations 등 새 파라미터 추가 | 전체 파이프라인 |
-| `data_partition.py` | overlap 영역 계산 로직 추가 | 전략 A |
-| `train_large.py` | overlap freeze/LR 감쇠, C2F 2단계 학습 | 전략 A, B |
-| `merge.py` | soft blending, duplicate pruning | 전략 A |
-| `utils/large_utils.py` | overlap-aware block_filtering, 구역 구분 | 전략 A |
+| `arguments/__init__.py` | overlap_ratio, overlap_freeze 등 새 파라미터 추가 (기본값으로 기존 동작 보존) | 전체 파이프라인 |
+
+> 원본 `data_partition.py`, `train_large.py`, `merge.py`, `utils/large_utils.py`는 **수정하지 않는다**.
+> 실험 로직은 루트 wrapper 파일로 분리하여 G0 baseline 파이프라인을 보존한다.
 
 ### 새로 생성할 파일
 
+**전략 A 파이프라인 (루트 wrapper)**:
+
 | 파일 | 용도 |
 |------|------|
-| `config/baseline_g0.yaml` ~ `config/combined_g4.yaml` | 실험 그룹별 설정 |
-| `config/smoke_test/*.yaml` | Smoke test 설정 |
-| `scripts/run_baseline.sh` ~ `scripts/run_all_experiments.sh` | 실험 실행 스크립트 |
-| `tools/boundary_lpips.py` | Boundary LPIPS 평가 |
+| `utils/overlap_utils.py` | 핵심 유틸: zone 분류, blend weight, 중복 탐지 |
+| `data_partition_overlap.py` | overlap-aware 카메라 할당 wrapper |
+| `train_large_overlap.py` | overlap freeze 학습 wrapper |
+| `merge_overlap.py` | soft blending + duplicate pruning merge |
+
+**Config 및 스크립트**:
+
+| 파일 | 용도 |
+|------|------|
+| `config/g1_overlap15.yaml`, `config/g2_overlap25.yaml` | G1/G2 실험 설정 |
+| `config/smoke_test/g1_overlap15_smoke.yaml` | Smoke test 설정 |
+| `scripts/run_overlap_experiment.sh` | G1/G2 E2E 실행 스크립트 |
+
+**평가 도구**:
+
+| 파일 | 용도 |
+|------|------|
 | `tools/boundary_crop.py` | 경계 영역 crop |
+| `tools/boundary_lpips.py` | Boundary LPIPS 평가 (Primary Metric) |
 | `tools/error_map.py` | Error map 생성 |
 | `tools/visualize_partitions.py` | 파티셔닝 시각화 |
 | `tools/plot_results.py` | 결과 그래프 |

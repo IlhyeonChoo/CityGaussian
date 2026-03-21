@@ -170,6 +170,12 @@ def get_default_lp():
     lp.block_id = -1  # block id
     lp.aabb = None  # foreground area in contraction
     lp.save_block_only = True  # whether to only store gaussians in blocks
+    lp.overlap_ratio = 0.0
+    lp.overlap_freeze = False
+    lp.freeze_after_iter = 3000
+    lp.blend_mode = "hard"
+    lp.prune_duplicates = False
+    lp.duplicate_threshold = 0.01
     # lod rendering
     lp.lod_configs = None  # list of paths to different detail levels, used only in LoD rendering
     # others
@@ -228,4 +234,3 @@ def parse_cfg(cfg, args):
     extract_args(pp, cfg['pipeline_params'], args)
 
     return lp, op, pp
-
