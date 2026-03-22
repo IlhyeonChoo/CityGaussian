@@ -8,8 +8,14 @@ import numpy as np
 from transforms3d.quaternions import mat2quat
 
 
-TRAIN_BLOCKS = [f"block_{index}" for index in range(1, 11)]
-TEST_BLOCKS = ["block_1_test"]
+DEFAULT_TRAIN_BLOCKS = [f"block_{index}" for index in range(1, 11)]
+DEFAULT_TEST_BLOCKS = ["block_1_test"]
+
+
+def parse_block_list(raw_value: str, default_blocks: list[str]) -> list[str]:
+    if not raw_value:
+        return list(default_blocks)
+    return [block.strip() for block in raw_value.split(",") if block.strip()]
 
 
 def parse_args():
@@ -19,6 +25,8 @@ def parse_args():
     parser.add_argument("--scale", type=float, default=0.01)
     parser.add_argument("--point-cloud", type=Path, default=None)
     parser.add_argument("--link-mode", choices=["symlink", "copy"], default="symlink")
+    parser.add_argument("--train-blocks", type=str, default="")
+    parser.add_argument("--test-blocks", type=str, default="")
     return parser.parse_args()
 
 
@@ -65,6 +73,32 @@ def ensure_clean_link(path: Path, source: Path, link_mode: str):
         import shutil
 
         shutil.copy2(source, path)
+
+
+def resolve_source_image(block_dir: Path, frame_index: int) -> Path:
+    candidates = [
+        block_dir / "rgb" / f"{frame_index:04d}.png",
+        block_dir / f"{frame_index:04d}.png",
+        block_dir / "input" / f"{frame_index:04d}.png",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    raise FileNotFoundError(
+        f"Unable to resolve source image for frame {frame_index} under {block_dir}"
+    )
+
+
+def resolve_block_dir(raw_dir: Path, block_name: str) -> Path:
+    candidates = [
+        raw_dir / block_name,
+        raw_dir / "train" / block_name,
+        raw_dir / "test" / block_name,
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    raise FileNotFoundError(f"Unable to resolve block directory for {block_name} under {raw_dir}")
 
 
 def write_cameras_txt(path: Path, width: int, height: int, fov_x: float):
@@ -147,7 +181,7 @@ def prepare_split(
     image_counter = 0
 
     for block_name in split_blocks:
-        block_dir = raw_dir / block_name
+        block_dir = resolve_block_dir(raw_dir, block_name)
         transforms_path = block_dir / "transforms_origin.json"
         with transforms_path.open("r", encoding="utf-8") as handle:
             transforms = json.load(handle)
@@ -158,7 +192,7 @@ def prepare_split(
             raise ValueError(f"Inconsistent FOV in {transforms_path}")
 
         probe_index = transforms["frames"][0]["frame_index"]
-        probe_image = block_dir / "rgb" / f"{probe_index:04d}.png"
+        probe_image = resolve_source_image(block_dir, probe_index)
         current_width, current_height = read_png_size(probe_image)
         if width is None:
             width, height = current_width, current_height
@@ -167,9 +201,7 @@ def prepare_split(
 
         for frame in transforms["frames"]:
             frame_index = frame["frame_index"]
-            source_image = block_dir / "rgb" / f"{frame_index:04d}.png"
-            if not source_image.exists():
-                raise FileNotFoundError(source_image)
+            source_image = resolve_source_image(block_dir, frame_index)
 
             image_name = f"{image_counter:05d}.png"
             image_path = images_dir / image_name
@@ -234,6 +266,8 @@ def main():
     raw_dir = args.raw_dir.resolve()
     output_dir = args.output_dir.resolve()
     point_cloud = resolve_point_cloud(raw_dir, args.point_cloud)
+    train_blocks = parse_block_list(args.train_blocks, DEFAULT_TRAIN_BLOCKS)
+    test_blocks = parse_block_list(args.test_blocks, DEFAULT_TEST_BLOCKS)
 
     pose_dir = output_dir / "pose" / "block_all"
     train_dir = output_dir / "train" / "block_all"
@@ -243,7 +277,7 @@ def main():
 
     train_stats = prepare_split(
         raw_dir=raw_dir,
-        split_blocks=TRAIN_BLOCKS,
+        split_blocks=train_blocks,
         output_path=train_dir,
         point_cloud_path=point_cloud,
         scale=args.scale,
@@ -251,7 +285,7 @@ def main():
     )
     test_stats = prepare_split(
         raw_dir=raw_dir,
-        split_blocks=TEST_BLOCKS,
+        split_blocks=test_blocks,
         output_path=test_dir,
         point_cloud_path=point_cloud,
         scale=args.scale,
