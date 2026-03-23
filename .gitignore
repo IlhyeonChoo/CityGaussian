@@ -154,3 +154,6 @@ config/past
 
 # .gitkeep 파일은 추적 (빈 디렉토리 유지용)
 !.gitkeep
+
+# AI 대화
+*.txt
