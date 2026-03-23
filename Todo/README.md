@@ -62,7 +62,10 @@ CityGaussianV1/
 │   └── (기존 스크립트 유지)
 │
 ├── tools/                          # 보조 도구
-│   ├── boundary_lpips.py           # Boundary LPIPS 측정 (신규)
+│   ├── select_boundary_views.py    # 실제 경계가 보이는 test view 선택
+│   ├── filtered_metrics.py         # 선택된 view subset 메트릭 재계산
+│   ├── projected_boundary_lpips.py # projected boundary crop LPIPS + crop 저장
+│   ├── boundary_lpips.py           # strip 기반 Boundary LPIPS (reference)
 │   ├── boundary_crop.py            # 경계 영역 crop (신규)
 │   ├── error_map.py                # GT 대비 Error Map 생성 (신규)
 │   ├── visualize_partitions.py     # 파티셔닝 시각화 (신규)
@@ -204,7 +207,28 @@ bash scripts/run_overlap_experiment.sh config/g2_overlap25.yaml
 # 전체 장면 메트릭 (PSNR / SSIM / LPIPS)
 python metrics_large.py -m output/g1_overlap15 -t val
 
-# Boundary LPIPS (경계 영역 crop, 64~128px)
+# 공식 경계 평가 1: 실제 block 경계가 보이는 test view만 선택
+python tools/select_boundary_views.py \
+  --config config/g1_overlap15.yaml \
+  --test_dir data/matrix_city/aerial/test/block_all_test \
+  --output_json output/boundary_analysis/g1_overlap15_boundary_views.json
+
+# 공식 경계 평가 2: 선택된 view subset에서 전체 이미지 메트릭 재계산
+python tools/filtered_metrics.py \
+  --output_dir output/g1_overlap15 \
+  --test_set val \
+  --iteration 30000 \
+  --view_manifest output/boundary_analysis/g1_overlap15_boundary_views.json
+
+# 공식 경계 평가 3: projected boundary crop LPIPS + 시각 확인용 crop 저장
+python tools/projected_boundary_lpips.py \
+  --output_dir output/g1_overlap15 \
+  --test_set val \
+  --iteration 30000 \
+  --view_manifest output/boundary_analysis/g1_overlap15_boundary_views.json \
+  --save_crops
+
+# 빠른 reference용 strip crop Boundary LPIPS
 python tools/boundary_lpips.py --output_dir output/g1_overlap15 --crop_size 128
 
 # Error Map 시각화
@@ -213,6 +237,27 @@ python tools/error_map.py --pred output/g1_overlap15/val/ours_30000/renders --gt
 # 결과 비교 그래프 생성
 python tools/plot_results.py --results_dir output/ --groups mc_small_aerial_c36 g1_overlap15 g2_overlap25
 ```
+
+공식 비교 규칙:
+
+- 전체 test set 메트릭은 reference로 유지한다.
+- 경계 품질 비교는 `select_boundary_views.py`가 뽑은 `실제 경계가 보이는 view subset` 기준으로 한다.
+- Boundary LPIPS의 공식 수치는 `projected_boundary_lpips.py` 결과를 사용한다.
+- `boundary_lpips.py`는 smoke/quick check용 heuristic reference로만 사용한다.
+
+## 현재 Pilot 상태
+
+- 현재 `subset 4-block`의 공식 pilot 비교 기준은 `5k`이다.
+- canonical 보고서:
+  - `docs/reports/G0_G1_20260322_subset4_5k_canonical.md`
+- 기존 `100 iter smoke` 보고서는 reference로 유지한다.
+  - `docs/reports/G0_G1_20260321_subset4_compare_and_feasibility.md`
+  - `docs/reports/G1_20260321_overlap15_subset_smoke.md`
+- `10k`는 아직 공식 결론이 아니다.
+  - coarse 10k 완료
+  - G0 10k는 `cell0` 완료, `cell1`은 `step 3819`에서 중단, `OOM 의심`
+  - G1 10k는 미시작
+- RTX 4060 Ti 로컬(`VRAM 16GB`)에서는 block 학습 시 `max_cache_num 32`와 `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`를 기본 재시도 기준으로 사용한다.
 
 ---
 

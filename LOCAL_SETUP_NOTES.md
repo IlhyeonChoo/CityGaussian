@@ -4,6 +4,9 @@
 
 - 이 레포는 `V1-Original` 기준 별도 clone이다.
 - `origin`은 `git@github.com:IlhyeonChoo/CityGaussian.git`, `upstream`은 `git@github.com:DekuLiuTesla/CityGaussian.git`로 연결했다.
+- 현재 로컬 실험 GPU는 `NVIDIA GeForce RTX 4060 Ti (VRAM 16GB)`다.
+- VRAM 부족으로 실험 진행이 불가능하다 판단
+- VRAM 32GB의 RTX PRO 4500 GPU가 장착된 서버로 옮겨서 마저 진행할 예정 
 - 로컬 환경은 `.venv` 기준 `Python 3.11`, `PyTorch 2.7.1+cu128`, `CUDA 12.8`, `TORCH_CUDA_ARCH_LIST=12.0`으로 맞췄다.
 - 서브모듈 로컬 수정은 `third_party_patches/`와 `scripts/apply_third_party_patches.sh`로 재적용 가능하게 정리했다.
 
