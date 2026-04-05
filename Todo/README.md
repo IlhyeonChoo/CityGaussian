@@ -84,10 +84,19 @@ CityGaussianV1/
 │   ├── g1_overlap15/               # G1 결과
 │   └── g2_overlap25/               # G2 결과
 │
-├── CLAUDE.md                       # AI 분석/관리자 지침
-├── AGENTS.md                       # AI 구현 에이전트 지침
+├── AGENTS.md                       # 공통 AI 작업 규칙 및 에이전트 라우팅
+├── .codex/agents/                  # Agent 1~4 상세 작업 가이드
 └── LOCAL_SETUP_NOTES.md            # 로컬 환경 설정 기록
 ```
+
+---
+
+## AI 작업 가이드
+
+- 현재 AI 작업 라우팅의 기준 문서는 루트 `AGENTS.md`와 `.codex/agents/`이다.
+- 에이전트별 상세 역할, 검증 범위, handoff 형식은 `.codex/agents/README.md`부터 확인한다.
+- 예전 문서나 진행 기록에 남아 있는 `CLAUDE.md` 참조는 당시 운영 체계를 설명하는
+  역사적 기록으로만 해석한다.
 
 ---
 

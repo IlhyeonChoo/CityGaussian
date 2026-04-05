@@ -1,315 +1,319 @@
-# AGENTS.md — AI 실험 에이전트 지침 (코드 수정·실험 실행·기록 역할)
+# AGENTS.md
+
+## Project Scope
+
+- Project: CityGaussian V1 boundary artifact mitigation research
+- Objective: reduce seams, color mismatch, and density gaps across block boundaries without relying on global alignment
+- Baseline: preserve the original CityGaussian V1 pipeline unless an experiment explicitly opts into new behavior
+- Strategy A: overlapping block partition with explicit boundary-sharing regions
+- Strategy B: hierarchical coarse-to-fine block training
+- Strategy A+B: combined overlap-aware partitioning with coarse-to-fine training
+
+## Domain Glossary
+
+- Block: one spatial cell produced by the CityGaussian partitioning pipeline and trained independently before merge
+- Core / Transition / Overlap region: partition subregions used to separate stable interior content from boundary-sharing content
+- Partition metadata: block ranges, camera assignment results, and any auxiliary data required to reproduce a partition layout
+- Coarse stage: an early low-budget training stage used to initialize later optimization
+- Fine stage: the main training stage that continues from baseline or coarse outputs
+- Boundary-view metrics: evaluation metrics computed on views where block boundaries are actually visible
+- Run artifact: the recorded config path, command, output directory, checkpoints, logs, and main metrics for one run
+- Baseline vs variant: the comparison contract between unmodified CityGaussian behavior and any experimental change
+
+## Repository Map
+
+- Baseline partition, training, and merge entrypoints: `data_partition.py`, `train_large.py`, `merge.py`
+- Overlap-aware variants: `data_partition_overlap.py`, `train_large_overlap.py`, `merge_overlap.py`, `utils/overlap_utils.py`
+- Rendering entrypoints: `render_large.py`, `render_large_lod.py`, `viewer.py`
+- Evaluation entrypoint: `metrics_large.py`
+- Data conversion utilities: `convert.py`, `convert_cam.py`
+- Boundary analysis and visualization tools (`tools/`):
+  - Partition visualization: `tools/visualize_partitions.py`
+  - Boundary-view selection and metrics: `tools/select_boundary_views.py`, `tools/boundary_crop.py`, `tools/boundary_lpips.py`, `tools/projected_boundary_lpips.py`, `tools/projected_boundary_utils.py`, `tools/filtered_metrics.py`
+  - Result visualization: `tools/error_map.py`, `tools/plot_results.py`
+  - Data preparation: `tools/prepare_matrixcity_small_aerial_v1.py`, `tools/copy_images.py`, `tools/transform_*.py`
+- Argument definitions: `arguments/__init__.py` (single module containing all parameter groups)
+- Experiment configs and launch scripts: `config/`, `scripts/`
+- Planning and status documents: `Todo/README.md`, `docs/progress.md`, `docs/reports/`, `docs/cleanup_candidates.md`, `LOCAL_SETUP_NOTES.md`
+- Per-agent working guides: `.codex/agents/`
+- Untracked runtime artifacts: `data/`, `output/`
+- Working source-of-truth for current work:
+  - research scope and experiment intent: `Todo/README.md`
+  - experiment matrix and run status: `docs/experiment_matrix.md`
+  - latest completed or partial run status: `docs/progress.md`, `docs/reports/`
+  - local environment assumptions and machine-specific notes: `LOCAL_SETUP_NOTES.md`
+  - executable experiment specification and the final authority for runnable behavior: `config/*.yaml`, `scripts/*.sh`
+  - if a planning or status document references missing files or conflicts with the current repository state, treat that reference as stale and prefer the tracked files that still exist
+
+## Agent Guide Directory
+
+- Detailed per-agent operating guides live under `.codex/agents/`.
+- Start with `.codex/agents/README.md` for routing, then open the matching
+  agent guide.
+- If a task crosses agent boundaries, keep the root rules in this file as the
+  source of truth and use Agent 4 guidance to coordinate the split.
+- Legacy references to `CLAUDE.md` in older notes or reports are historical
+  only. The current routing authority is this file plus `.codex/agents/`.
+
+## Current Implementation Status
+
+- Strategy A (overlap-aware partition, training, merge, and evaluation
+  wrappers) is implemented and actively used through dedicated entrypoints and
+  configs.
+- Strategy B (coarse-to-fine behavior inside baseline entrypoints) should be
+  treated as planned or partial unless the current `config/*.yaml` and
+  `scripts/*.sh` for the target experiment show a runnable path.
+- Strategy A+B should be treated as a coordinated experiment plan, not as an
+  assumed end-to-end pipeline, until its config and launch path are explicitly
+  present in the repository.
+- Do not infer support from older planning notes alone. Verify against tracked
+  configs, scripts, and the latest progress documents before editing baseline
+  code paths.
+
+## Pipeline Invariants
+
+- Baseline entrypoints must remain usable without overlap or coarse-to-fine options enabled.
+- New behavior must be opt-in through config, dedicated wrapper entrypoints, or both.
+- Partition, training, merge, and evaluation changes must preserve baseline-to-variant comparability.
+- Experiment work must record the exact config path, command, output directory, runtime context, and primary metrics.
+- Reports must distinguish completed runs, partial runs, failed runs, and planned runs.
+- Unresolved risks, regressions, and environment blockers must be reported explicitly.
+
+## Shared Rules For All Agents
+
+1. Write code, code comments, config comments, and commit messages in English. Planning and status documents may stay in Korean when they already follow the current repository convention. Use Korean when talking with the user unless the user requests otherwise.
+2. Preserve baseline behavior. New behavior must be opt-in and controlled by config whenever possible.
+3. Stay within your assigned scope. If a task crosses scope boundaries, coordinate with Agent 4 or the user before proceeding.
+4. Do not silently rewrite, revert, or absorb another agent's work.
+5. Keep changes traceable. Record the exact config path, command, output directory, runtime, checkpoints or restart points when relevant, and main metrics for experiment-related work.
+6. Expensive runs require alignment. Before launching long training or large experiment batches, confirm the purpose, config, and expected outputs with the user.
+7. Stage and commit with the user. Do not stage, commit, amend, push, or rewrite history on your own.
+8. Prefer additive wrappers, new config fields, and isolated utilities over invasive edits when baseline preservation matters.
+9. Surface blockers early: missing data, unclear ownership, conflicting assumptions, unexpected regressions, or environment issues.
+10. Leave clean handoff context: files touched, assumptions made, validation status, known risks, and the recommended next owner.
+11. Treat mixed-scope files such as combined experiment configs and orchestration scripts as coordination surfaces. Agent 4 owns routing and review of scope splits; Agents 1 to 3 own only their domain-specific logic and fields inside those files.
+
+## Shared Commit Rules
+
+- Commits are prepared together with the user.
+- Do not create a commit until the user has reviewed the intended scope.
+- Keep one logical change per commit.
+- Use descriptive commit messages in the form `<area>: <summary>`.
+- Include the experiment or subsystem when relevant, for example:
+  - `partition: adjust overlap region assignment`
+  - `training: add overlap freeze scheduling`
+  - `docs: summarize G1 smoke results`
 
-> 이 문서는 **연구 계획에 따라 코드를 수정하고, 실험을 실행하고, 결과를 기록**하는 AI 에이전트에 대한 지침입니다.
-> 사용자와 대화하며 분석·관리하는 역할은 CLAUDE.md를 참조하세요.
+## Shared Workflow
 
----
+1. Check the current repository state before editing code or docs.
+2. Identify the correct owning agent for the task.
+3. Share a concise plan with the user for non-trivial changes or experiments.
+4. Implement only the part that belongs to the current agent's scope.
+5. Run the smallest meaningful validation for the touched area.
+6. Summarize changes, validation status, and open questions before handoff or commit preparation.
 
-## 프로젝트 개요
+## Long-running ML Jobs
 
-- **프로젝트**: CityGaussian V1 블록 경계 아티팩트 완화 전략 연구
-- **핵심 목표**: 블록 분할/학습 전략 개선으로 경계 아티팩트 완화 (글로벌 정합 없이)
-- **기반 코드**: CityGaussian V1 (ECCV 2024)
+- Long-running ML jobs require explicit alignment with the user and a concrete experiment purpose grounded in the active config or planning documents.
+- Before launch, record the config path, dataset slice, GPU and worker assumptions, output directory, checkpoint strategy, and stop condition.
+- Default to a smoke test or subset run before full-scale execution unless the current experiment context already justifies skipping it.
+- Full-scale runs should be resumable when feasible and must leave enough logs and notes for another agent or the user to continue safely.
 
----
+## Definition of Done
 
-## 역할 1: 실험 계획 확정
+- Partition changes: partition metadata or diagnostics are produced and the intended block layout or assignment behavior is verified.
+- Training or merge changes: the smallest meaningful smoke or subset validation is completed, or the exact blocker is documented with logs or metrics.
+- Evaluation or report changes: metric source paths are recorded, baseline-vs-variant conclusions are written, and unresolved risks are listed.
+- Guidance document changes: paths, commands, ownership boundaries, and source-of-truth references match the actual repository state.
 
-작업 시작 전 반드시 아래 문서들을 읽고 현재 상태를 파악한다.
+## Workflow Boundaries
 
-### 필수 확인 문서
+- Agent 1 defines how blocks and overlap regions exist. Agent 1 does not own training dynamics after partitioning is fixed.
+- Agent 2 defines how blocks are trained, merged, frozen, blended, or pruned. Agent 2 does not redefine the base partition layout.
+- Agent 3 explains what results mean, keeps progress and reports coherent, and proposes next steps. Agent 3 does not silently alter core pipeline behavior.
+- Agent 4 keeps repository-wide guidance, task boundaries, and handoffs coherent. Agent 4 does not override technical evidence from the owning domain agent without discussion.
+- Mixed config files and wrapper scripts that combine partition, training,
+  merge, and evaluation steps are shared coordination surfaces. Agent 4 owns
+  routing and review of those files; domain agents own the step-specific
+  behavior they change inside them.
+- If a task crosses these boundaries, split the work instead of collapsing ownership into one agent.
 
-| 문서 | 경로 | 확인 내용 |
-|------|------|-----------|
-| 연구 계획서 | `Todo/README.md` | 전체 전략, 실험 그룹(G0~G4), 일정 |
-| 로컬 설정 | `LOCAL_SETUP_NOTES.md` | 환경, 이미 검증된 항목, 주의사항 |
-| AI 협업자 지침 | `CLAUDE.md` | 레포 구조, 파이프라인 흐름, 수정 대상 |
-| 진행 기록 | `docs/progress.md` | 지금까지 완료된 작업 (있는 경우) |
-| 정리 대상 | `docs/cleanup_candidates.md` | 이미 기록된 불필요 파일 (있는 경우) |
+## Agent Roles
 
-### 실험 계획 확정 절차
+### Agent 1: Dataset Partition And Overlap Definition
 
-1. 위 문서를 모두 읽는다
-2. 현재 config/ 디렉토리의 실험 설정 파일을 확인한다
-3. output/ 디렉토리에서 이미 완료된 실험이 있는지 확인한다
-4. 다음에 수행할 실험을 확정하고, **실험 계획을 사용자에게 보고**한다
-5. 사용자 승인 후 코드 수정 및 실험을 진행한다
+Primary ownership:
 
-> **중요**: 실험 계획은 반드시 사용자 승인을 받은 뒤 진행한다. 임의로 실험을 시작하지 않는다.
+- Dataset-to-block partition logic
+- Block layout decisions such as `block_dim`, spatial ranges, and partition metadata
+- Overlap area definition, including core, transition, and overlap region rules
+- Camera or sample assignment rules tied directly to partition structure
+- Partition visualization or diagnostics that explain how blocks are created
+- Config fields required to describe partition layout
 
----
+Out of scope:
 
-## 역할 2: 코드 수정 및 작성
+- Block training optimization after partitions are already defined
+- Result interpretation, experiment reporting, and follow-up planning
+- Repository-wide coordination, branch management, or commit management
 
-### 파이프라인 이해
+Typical files:
 
-CityGaussian V1의 학습 파이프라인:
+- `data_partition*.py`
+- Partition helpers under `utils/`
+- Partition visualization: `tools/visualize_partitions.py`
+- Config files that define block layout or overlap geometry
 
-```
-1. Coarse 학습     : python train_large.py --config config/{scene}_coarse.yaml
-2. 블록 파티셔닝   : python data_partition.py --config config/{scene}_cXX.yaml
-3. 블록별 학습     : python train_large.py --config config/{scene}_cXX.yaml --block_id {N}
-4. 블록 병합       : python merge.py --config config/{scene}_cXX.yaml
-5. 렌더링          : python render_large.py --config config/{scene}_cXX.yaml --custom_test {path}
-6. 메트릭 계산     : python metrics_large.py -m output/{scene}_cXX -t val
-```
+Hand off to another agent when:
 
-### 수정 대상 파일과 위치
+- The task mainly changes training schedule, optimizer behavior, merge behavior, freeze logic, or overlap weighting during learning
+- The task is mostly about analyzing completed runs or writing experiment conclusions
 
-#### 전략 A (중첩 블록 분할) 관련
+### Agent 2: Block Training And Overlap Optimization
 
-**원본 수정 (최소한)**:
+Primary ownership:
 
-| 파일 | 수정 포인트 |
-|------|-------------|
-| `arguments/__init__.py` | `ModelParams`에 `overlap_ratio` (float, default=0.0), `overlap_freeze` (bool), `freeze_after_iter` (int, default=3000), `blend_mode` (str, default="hard"), `prune_duplicates` (bool, default=False), `duplicate_threshold` (float, default=0.01) 추가 |
+- Block-wise training behavior after partition definitions exist
+- Overlap-aware optimization, freeze scheduling, blend weighting, duplicate pruning, and merge-time optimization
+- Checkpoint flow, block training schedules, and per-block training performance tuning
+- Config and scripts that control training, merging, and optimization behavior
 
-**신규 파일 (루트 wrapper 방식)**:
+Out of scope:
 
-| 파일 | 역할 |
-|------|------|
-| `utils/overlap_utils.py` | 핵심 유틸: zone 분류, blend weight 계산, 중복 탐지. `large_utils.py`의 `contract_to_unisphere()` 재사용 |
-| `data_partition_overlap.py` | 원본 `data_partition.py`의 `block_partitioning()` import + overlap-aware 카메라 할당 wrapper |
-| `train_large_overlap.py` | 원본 `train_large.py` 기반 학습 루프 + overlap zone gradient freeze 삽입 |
-| `merge_overlap.py` | 원본 `merge.py` 패턴 기반 + soft blending + duplicate pruning |
+- Defining the base partition strategy or changing dataset block boundaries
+- Experiment narrative, result reporting, and long-form planning
+- Repository stewardship outside the assigned training-related scope
 
-> **원본 `data_partition.py`, `utils/large_utils.py`, `train_large.py`, `merge.py`는 수정하지 않는다.**
-> 실험 로직은 모두 신규 파일에 구현하여 G0 baseline 파이프라인을 보존한다.
+Typical files:
 
-#### 전략 B (Coarse-to-Fine 학습) 관련
+- `train_large*.py`
+- `merge*.py`
+- `render_large.py`, `render_large_lod.py`
+- Optimization parameters in `arguments/__init__.py`
+- Training and merge utilities under `utils/`
+- Training or evaluation scripts tied to block optimization
 
-| 파일 | 수정 포인트 |
-|------|-------------|
-| `arguments/__init__.py` | `OptimizationParams`에 `coarse_iterations` (int, default=0), `use_c2f` (bool) 추가 |
-| `train_large.py` | block 학습 시 coarse→fine 2단계 분기: coarse checkpoint 저장 → fine에서 로드하여 이어 학습 |
+Hand off to another agent when:
 
-#### 평가 도구 (새로 작성)
+- The required fix changes how blocks are created, bounded, or assigned
+- The main task is to interpret outcomes, compare experiments, or plan the next research step
 
-| 파일 | 용도 |
-|------|------|
-| `tools/boundary_crop.py` | 블록 경계에 해당하는 이미지 영역을 crop하는 유틸리티 |
-| `tools/boundary_lpips.py` | crop된 경계 영역에 대해 LPIPS를 계산 — **이 연구의 primary metric** |
-| `tools/error_map.py` | GT 대비 렌더링의 pixel-wise error map 생성 |
-| `tools/visualize_partitions.py` | 3D 공간에서 블록 파티셔닝 결과를 시각화 |
-| `tools/plot_results.py` | 실험 그룹 간 메트릭 비교 그래프 |
+### Agent 3: Experiment Analysis, Discussion, And Planning
 
-### 코드 수정 원칙
+Primary ownership:
 
-1. **기존 동작 보존**: 새 파라미터는 기본값으로 기존 CityGS V1과 동일하게 동작해야 한다
-   - `overlap_ratio=0.0` → 기존과 동일
-   - `coarse_iterations=0` 또는 `use_c2f=False` → 기존과 동일
-2. **config로 제어**: 전략 차이는 코드 내 하드코딩이 아니라 YAML config 파라미터로 전환
-3. **최소 수정**: 기존 함수의 시그니처를 바꾸기보다 새 파라미터를 추가하는 방식 선호
-4. **테스트 가능하게**: smoke test config로 10~100 iteration 내에 전체 파이프라인이 돌아가는지 확인 가능해야 함
+- Analyze completed runs and compare quantitative and qualitative results
+- Discuss outcomes with the user and turn them into clear conclusions
+- Maintain experiment notes, progress logs, reports, and next-step plans
+- Propose follow-up experiments with rationale, expected outcomes, and required configs
 
-### 실험 Config 작성 규칙
+Out of scope:
 
-실험 config는 기존 config를 기반으로 하되, 실험 파라미터를 추가한다.
+- Direct edits to core partition or training code unless explicitly reassigned
+- Silent execution of major new experiments without user alignment
+- Repository-wide git decisions
 
-```yaml
-# 예시: config/g1_overlap15.yaml
-# 기존 mc_small_aerial_c36.yaml 기반 + overlap 파라미터 추가
-model_params:
-  source_path: "data/matrix_city/aerial/train/block_all"
-  pretrain_path: "output/mc_small_aerial_coarse/point_cloud/iteration_30000"
-  partition_name: "g1_overlap15"
-  block_dim: [6, 6, 1]
-  aabb: [-3.5, -4, -10, 4.5, 2, 10]
-  overlap_ratio: 0.15        # 전략 A 파라미터
-  overlap_freeze: true
-  freeze_after_iter: 3000
-  blend_mode: "soft"
-  prune_duplicates: true
-  duplicate_threshold: 0.01
-  # ... (기존 파라미터 유지)
+Typical files:
 
-optim_params:
-  iterations: 30000
-  # ... (기존 파라미터 유지)
-```
-
-### 실험 Script 작성 규칙
+- `docs/reports/`
+- `docs/progress.md`
+- `Todo/README.md`
+- Analysis notes and summary documents
+- Boundary analysis tools under `tools/` (select_boundary_views, boundary_lpips,
+  projected_boundary_lpips, filtered_metrics, error_map, plot_results)
 
-scripts/ 디렉토리의 셸 스크립트는 아래 패턴을 따른다:
+Expected deliverables:
 
-```bash
-#!/bin/bash
-# 실험 그룹: G1 - 전략 A (Overlap 15%)
-# 사용법: bash scripts/run_overlap.sh --config config/overlap_15_g1.yaml
+- Result summaries grounded in actual outputs
+- Decision logs for what changed and why
+- A concrete next experiment plan when the current evidence supports it
 
-CONFIG=${1:-"config/overlap_15_g1.yaml"}
+### Agent 4: Project Lead And Repository Steward
 
-# 1. Coarse (이미 완료되었으면 건너뛰기)
-# 2. Partition (overlap 적용)
-# 3. Block-wise Training
-# 4. Merge (soft blending)
-# 5. Render
-# 6. Metrics
-```
+Primary ownership:
 
----
+- Coordinate task boundaries across agents
+- Resolve ownership conflicts and integration risks
+- Maintain root guidance documents and shared workflow conventions
+- Review whether partition, training, and analysis changes fit together coherently
+- Work with the user on staging, commits, branch hygiene, and repository organization
 
-## 역할 3: 실험 진행 및 결과 보고
+Out of scope:
 
-### 실험 실행 시 기록할 항목
+- Overriding domain-specific technical decisions from Agents 1 to 3 without discussion
+- Making experimental claims without evidence from actual outputs
 
-실험을 실행할 때 아래 정보를 수집하여 보고서에 포함한다:
+Core responsibilities:
 
-1. **실험 환경**: GPU 모델, VRAM, CUDA 버전
-2. **실행 명령어**: 정확한 커맨드 라인
-3. **학습 시간**: wall-clock time (시작~종료)
-4. **정량 지표**: PSNR, SSIM, LPIPS, Boundary LPIPS
-5. **모델 크기**: 최종 .ply 파일 크기, Gaussian 수
-6. **오류/경고**: 학습 중 발생한 이슈
+- Keep `AGENTS.md` current
+- Ensure shared commands and documents remain discoverable
+- Maintain handoff quality between agents
+- Decide when work is ready for user review or needs another iteration
 
-### 결과 보고서 작성
+## Handoff Contract
 
-실험 완료 후 `docs/reports/` 디렉토리에 보고서를 작성한다.
+When handing work to another agent or back to the user, include:
 
-**파일명 규칙**: `{실험ID}_{날짜}_{간단설명}.md`
-- 예: `G1_20260321_overlap15_smoke.md`
+- Current goal
+- Files touched
+- What changed
+- What was validated
+- What remains uncertain or risky
+- Recommended next owner
+- Recommended next action
+- For experiment-affecting work, also include the config path, exact command,
+  output directory, and any artifact or log paths. If a field does not apply,
+  state `N/A` explicitly.
 
-**보고서 구조**:
+## Common Commands
 
-```markdown
-# [실험 ID] 결과 보고서
+These are shared reference commands. Adjust paths and config names as needed.
 
-- 일시: YYYY-MM-DD HH:MM ~ HH:MM
-- Config: config/{파일명}.yaml
-- 데이터셋: (이름, train/test 이미지 수)
-- GPU: (모델, VRAM)
+### Planning And Current State
 
-## 실행 명령어
+- `git status --short`
+- `git diff --stat`
+- `git branch --show-current`
+- `sed -n '1,220p' Todo/README.md`
+- `sed -n '1,220p' LOCAL_SETUP_NOTES.md`
+- `sed -n '1,220p' docs/progress.md`
 
-(실제 실행한 명령어를 그대로 기록)
+### Config And Code Discovery
 
-## 정량 결과
+- `rg --files config scripts tools docs`
+- `rg -n "overlap|block_dim|partition_name|coarse_iterations|use_c2f" config`
+- `rg -n "block_partitioning|overlap|freeze_after_iter|blend|duplicate" .`
+- `sed -n '1,220p' config/<experiment>.yaml`
 
-| 지표 | 값 | G0 대비 |
-|------|-----|---------|
-| PSNR | | |
-| SSIM | | |
-| LPIPS | | |
-| Boundary LPIPS | | |
-| 학습 시간 | | |
-| 모델 크기 | | |
-| Gaussian 수 | | |
+### Output And Result Inspection
 
-## 학습 로그 요약
+- `find output -maxdepth 2 -mindepth 1 -type d | sort | head -n 100`
+- `sed -n '1,220p' output/<run>/results.json`
+- `sed -n '1,220p' output/<run>/per_view.json`
+- `du -sh output/<run>`
 
-- Loss 수렴 여부
-- 특이사항
+### Boundary Analysis And Visualization
 
-## 렌더링 결과
+- `./.venv/bin/python tools/visualize_partitions.py --help`
+- `./.venv/bin/python tools/select_boundary_views.py --help`
+- `./.venv/bin/python tools/boundary_lpips.py --help`
+- `./.venv/bin/python tools/projected_boundary_lpips.py --help`
+- `./.venv/bin/python tools/filtered_metrics.py --help`
+- `./.venv/bin/python tools/error_map.py --help`
+- `./.venv/bin/python tools/plot_results.py --help`
 
-- 경계 영역 시각 비교: (이미지 경로)
-- Error map: (이미지 경로)
+### Training And Pipeline Entry Points
 
-## 이슈
-
-- (발생한 오류, 경고, 해결 방법)
-```
-
-### 결과 파일 위치
-
-```
-output/{실험명}/
-├── results.json              # 전체 메트릭
-├── per_view.json             # 뷰별 메트릭
-├── costs.json                # 렌더링 성능
-├── point_cloud/
-│   └── iteration_{N}/
-│       └── point_cloud.ply   # 병합된 모델
-├── cells/                    # 블록별 결과
-│   └── cell{N}/
-└── {test_set}/
-    └── ours_{N}/
-        ├── renders/          # 렌더링 이미지
-        └── gt/               # GT 이미지
-```
-
----
-
-## 역할 4: 불필요 파일 정리 기록
-
-### 핵심 원칙
-
-> **절대로 파일을 직접 삭제하거나 편집하지 않는다.**
-> 불필요하다고 판단되는 파일은 `docs/cleanup_candidates.md`에 기록만 한다.
-> 사람 또는 다른 에이전트(CLAUDE.md 역할)가 확인 후 처리한다.
-
-### 기록 대상
-
-- 실험이 끝난 뒤 더 이상 필요 없는 중간 결과물
-- 역할이 중복되는 config 파일
-- 사용되지 않는 스크립트나 도구
-- 오래된 문서 (내용이 현재 상태와 맞지 않는 경우)
-- 임시로 만들었다가 불필요해진 파일
-
-### 기록 형식
-
-`docs/cleanup_candidates.md`에 아래 형식으로 추가한다:
-
-```markdown
-## 정리 후보 목록
-
-### YYYY-MM-DD 기록
-
-| 파일/디렉토리 | 이유 | 판단 근거 | 처리 제안 |
-|---------------|------|-----------|-----------|
-| `output/old_smoke_test/` | smoke test 완료, 본실험 결과로 대체됨 | G0 본실험 결과 존재 | 삭제 가능 |
-| `config/mc_small_aerial_coarse_smoke.yaml` | smoke 전용, 본실험에서 미사용 | run_smoke_test.sh에서만 참조 | 보존 (smoke 재실행 가능성) |
-```
-
-### 판단 기준
-
-- **삭제 가능**: 다른 곳에서 참조하지 않고, 재생성이 쉬운 경우
-- **보존 권장**: 재실행에 필요하거나, 히스토리 기록 가치가 있는 경우
-- **확인 필요**: 삭제 여부를 사용자에게 물어봐야 하는 경우
-
----
-
-## 작업 흐름 요약
-
-```
-[시작]
-  │
-  ├─ 1. 문서 확인 (Todo/README.md, LOCAL_SETUP_NOTES.md, CLAUDE.md, docs/)
-  │
-  ├─ 2. 현재 상태 파악 (config/, output/, 완료된 실험 확인)
-  │
-  ├─ 3. 실험 계획 확정 → 사용자에게 보고 → 승인 대기
-  │
-  ├─ 4. 코드 수정/작성 (기존 코드 확장, config 생성)
-  │
-  ├─ 5. Smoke test로 파이프라인 검증
-  │
-  ├─ 6. 본 실험 실행
-  │
-  ├─ 7. 결과 보고서 작성 (docs/reports/)
-  │
-  ├─ 8. 불필요 파일 기록 (docs/cleanup_candidates.md)
-  │
-  └─ 9. 다음 실험으로 반복
-```
-
----
-
-## 환경 정보
-
-- Python 3.11, PyTorch 2.7.1+cu128, CUDA 12.8, TORCH_CUDA_ARCH_LIST=12.0
-- 가상환경: `.venv/`
-- 데이터: `data/matrix_city/aerial/` (train 7672장, test 152장)
-- 기본 이미지 다운스케일: 1600px (원본은 `--resolution 1`)
-- `max_cache_num`: 64부터 시작 권장
-- submodules: CUDA 12.8 호환 패치 적용 상태
-
----
-
-## 주의사항
-
-- `V1-original` 브랜치는 원본 보존 — 실험은 별도 브랜치에서 진행
-- `output/`, `data/`는 Git 미추적
-- 기존 CityGS V1의 동작을 깨뜨리지 않도록 주의
-- 대용량 파일(.ply, .pth, 이미지)은 절대 Git에 추가하지 않음
-- 실험 중 OOM 발생 시 `max_cache_num` 줄이기 또는 `--resolution` 조정
+- `./.venv/bin/python train_large.py --help`
+- `./.venv/bin/python data_partition.py --help`
+- `./.venv/bin/python merge.py --help`
+- `./.venv/bin/python render_large.py --help`
+- `./.venv/bin/python render_large_lod.py --help`
+- `./.venv/bin/python metrics_large.py --help`
+- `./.venv/bin/python train_large_overlap.py --help`
+- `./.venv/bin/python data_partition_overlap.py --help`
+- `./.venv/bin/python merge_overlap.py --help`
+- `bash scripts/run_overlap_experiment.sh config/<experiment>.yaml`
+- `bash scripts/run_subset_progression_resume.sh`
+- `bash scripts/run_subset_progression_current_server.sh`

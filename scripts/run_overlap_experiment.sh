@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT_DIR"
+
 if [[ $# -lt 1 ]]; then
   echo "Usage: $0 <config-path> [extra args for training/render]"
   exit 1
@@ -9,7 +12,7 @@ fi
 CONFIG="$1"
 shift || true
 
-PYTHON_BIN="${PYTHON_BIN:-python}"
+PYTHON_BIN="${PYTHON_BIN:-$ROOT_DIR/.venv/bin/python}"
 MODEL_NAME="$(basename "${CONFIG%.*}")"
 
 ITERATIONS="$("$PYTHON_BIN" -c 'import sys,yaml; cfg=yaml.safe_load(open(sys.argv[1])); print(cfg["optim_params"]["iterations"])' "$CONFIG")"
