@@ -1,19 +1,159 @@
-*.pyc
-.vscode
-output
-build
+# ============================================================
+# OBC-CityGS .gitignore
+# ============================================================
+
+# ======================== Data & Output =====================
+# 데이터셋 (대용량, Git 미추적)
+data/
+!data/.gitkeep
+
+# 학습 결과물 (체크포인트, 렌더링 이미지 등)
+output/
+!output/.gitkeep
+
+# 학습 로그
+logs/
+!logs/.gitkeep
+
+# 평가 결과 (대용량)
+eval/
+
+# ======================== 3DGS Artifacts ===================
+# Gaussian Splatting 모델 파일
+*.ply
+*.splat
+
+# COLMAP 결과
+colmap_output/
+sparse/
+database.db
+
+# 포인트클라우드
+*.pcd
+*.las
+*.laz
+
+# ======================== Python ==========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.env/
+.venv/
+conda-env/
+
+# pip
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ======================== PyTorch / CUDA ==================
+# 체크포인트
+*.pth
+*.pt
+*.ckpt
+checkpoint_*/
+
+# CUDA 빌드
+*.cubin
+*.fatbin
+*.ptx
+
+# ======================== Jupyter =========================
+.ipynb_checkpoints/
+*.ipynb_meta
+notebooks/
+
+# ======================== IDE / Editor ====================
+.vscode/
+*.code-workspace
+.idea/
+*.swp
+*.swo
+*~
+.history
+
+# ======================== OS ==============================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+.nfs*
+
+# ======================== Media (대용량) ==================
+# 렌더링 이미지/영상
+*.mp4
+*.avi
+*.mov
+*.mkv
+
+# 대용량 렌더링 결과
+renders/
+error_maps/
+
+# ======================== CityGS V1 전용 =================
+# 기존 V1 레포에서 사용하던 항목
 diff_rasterization/diff_rast.egg-info
 diff_rasterization/dist
 tensorboard_3d
 screenshots
-data
-eval
 GaussianViewTest
 debug
-.history
 plug_in
 run_gpu*
-notebooks
-wandb
+WezTerm
+
+# ======================== WandB / TensorBoard =============
+wandb/
+runs/
+events.out.tfevents.*
+
+# ======================== Misc ============================
+# 압축 파일
+*.zip
+*.tar
+*.tar.gz
+*.7z
+
+# 임시 파일
+tmp/
+temp/
+*.tmp
+*.bak
+
+# 큰 바이너리
+*.bin
+*.dat
+
+# Config 임시/과거 버전
 config/dump
 config/past
+
+# ======================== 예외 (Git 추적 대상) ============
+# config, scripts, docs, Todo는 반드시 추적
+!config/**
+!scripts/**
+!docs/**
+!Todo/**
+
+# .gitkeep 파일은 추적 (빈 디렉토리 유지용)
+!.gitkeep
+
+# AI 대화
+*.txt

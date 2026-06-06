@@ -54,6 +54,28 @@ class ModelParams(ParamGroup):
         self._white_background = False
         self.data_device = "cuda"
         self.eval = False
+        self.overlap_ratio = 0.0
+        self.overlap_freeze = False
+        self.freeze_after_iter = 3000
+        self.blend_mode = "hard"
+        self.prune_duplicates = False
+        self.duplicate_threshold = 0.01
+        self.partition_mode = "grid"
+        self.unit_init_point_filter = True
+        self.unit_init_point_source = "all"
+        self.unit_init_point_filter_mode = "membership"
+        self.unit_pretrain_filter_mode = "bounds"
+        self.unit_save_filter_mode = "all"
+        self.unit_aabb_margin = 0.0
+        self.unit_aabb_margin_ratio = 0.02
+        self.unit_train_prune_mode = "none"
+        self.unit_train_prune_from_iter = 0
+        self.unit_train_prune_until_iter = 30_000
+        self.unit_train_prune_interval = 100
+        self.unit_merge_filter_mode = "none"
+        self.unit_merge_strict_iteration = False
+        self.grid_pretrain_filter_mode = "none"
+        self.grid_pretrain_filter_padding = 0.0
         super().__init__(parser, "Loading Parameters", sentinel)
 
     def extract(self, args):

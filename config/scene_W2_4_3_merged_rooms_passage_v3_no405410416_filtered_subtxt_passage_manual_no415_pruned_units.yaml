@@ -1,0 +1,62 @@
+# Model Parameters
+model_params: {
+    model_config: {
+        name: "GaussianModel",
+        kwargs: {}
+    },
+    sh_degree: 3,
+    source_path: "data/W2_4_3_merge_rooms_with_passage_v3_undistorted/combined_no_405_410_416_filtered",
+    partition_name: "scene_W2_4_3_merged_rooms_passage_v3_no405410416_filtered_subtxt_passage_manual_no415_pruned_units",
+    partition_mode: "colmap_unit",
+    pretrain_path: null,
+    model_path: "",
+    images: "images",
+    block_dim: [10, 1, 1],
+    unit_init_point_filter: True,
+    unit_init_point_source: "core",
+    unit_init_point_filter_mode: "membership_and_bounds",
+    unit_pretrain_filter_mode: "bounds",
+    unit_save_filter_mode: "bounds",
+    unit_train_prune_mode: "bounds",
+    unit_train_prune_from_iter: 500,
+    unit_train_prune_until_iter: 30000,
+    unit_train_prune_interval: 100,
+    unit_merge_filter_mode: "bounds",
+    unit_merge_strict_iteration: True,
+    unit_aabb_margin: 0.5,
+    unit_aabb_margin_ratio: 0.05,
+    num_threshold: 1000,
+    ssim_threshold: 0.05,
+    resolution: -1,
+    white_background: False,
+    data_device: "cuda",
+    eval: False,
+    save_block_only: True,
+}
+
+# Pipeline Parameters
+pipeline_params: {
+    convert_SHs_python: False,
+    compute_cov3D_python: False,
+    debug: False
+}
+
+# Optimization Parameters
+optim_params: {
+    iterations: 30000,
+    position_lr_init: 0.000064,
+    position_lr_final: 0.00000064,
+    position_lr_delay_mult: 0.01,
+    position_lr_max_steps: 30000,
+    feature_lr: 0.0025,
+    opacity_lr: 0.05,
+    scaling_lr: 0.004,
+    rotation_lr: 0.001,
+    percent_dense: 0.01,
+    lambda_dssim: 0.2,
+    densification_interval: 100,
+    opacity_reset_interval: 3000,
+    densify_from_iter: 500,
+    densify_until_iter: 15000,
+    densify_grad_threshold: 0.0002
+}
