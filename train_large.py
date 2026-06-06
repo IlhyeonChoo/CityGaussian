@@ -164,6 +164,16 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, refilter
                     if iteration % opt.opacity_reset_interval == 0 or (dataset.white_background and iteration == opt.densify_from_iter):
                         gaussians.reset_opacity()
 
+                if getattr(dataset, "unit_train_prune_mode", "none") == "bounds":
+                    prune_from = int(getattr(dataset, "unit_train_prune_from_iter", 0))
+                    prune_until = int(getattr(dataset, "unit_train_prune_until_iter", opt.iterations))
+                    prune_interval = int(getattr(dataset, "unit_train_prune_interval", 100))
+                    if prune_interval > 0 and prune_from <= iteration <= prune_until and iteration % prune_interval == 0:
+                        start = time.time()
+                        scene.prune_unit_bounds(dataset, iteration)
+                        end = time.time()
+                        ema_time_densify = 0.4 * (end - start) + 0.6 * ema_time_densify
+
                 # Optimizer step
                 if iteration < opt.iterations:
                     gaussians.optimizer.step()

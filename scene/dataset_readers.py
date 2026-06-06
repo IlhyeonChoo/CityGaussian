@@ -128,7 +128,7 @@ def storePly(path, xyz, rgb):
     ply_data = PlyData([vertex_element])
     ply_data.write(path)
 
-def readColmapSceneInfo(path, images, eval, llffhold=None, partition=None):
+def readColmapSceneInfo(path, images, eval, llffhold=None, partition=None, normalize_after_partition=False):
     try:
         cameras_extrinsic_file = os.path.join(path, "sparse/0", "images.bin")
         cameras_intrinsic_file = os.path.join(path, "sparse/0", "cameras.bin")
@@ -151,6 +151,8 @@ def readColmapSceneInfo(path, images, eval, llffhold=None, partition=None):
             if partition[i]:
                 filtered_cam_infos.append(cam_infos[i])
         cam_infos = filtered_cam_infos if len(filtered_cam_infos) >= 50 else []
+        if normalize_after_partition and cam_infos:
+            nerf_normalization = getNerfppNorm(cam_infos)
         print(f"Filtered Cameras: {len(filtered_cam_infos)}. ")
     
     if eval:

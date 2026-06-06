@@ -166,10 +166,26 @@ def get_default_lp():
     lp.ssim_threshold = 0.08  # threshold of ssim difference
     # finetuning
     lp.partition_name = ""  # filename of .npy partition file
+    lp.partition_mode = "grid"  # grid or colmap_unit
     lp.block_dim = None  # block dimensions
     lp.block_id = -1  # block id
     lp.aabb = None  # foreground area in contraction
     lp.save_block_only = True  # whether to only store gaussians in blocks
+    lp.unit_init_point_filter = True
+    lp.unit_init_point_source = "all"
+    lp.unit_init_point_filter_mode = "membership"
+    lp.unit_pretrain_filter_mode = "bounds"
+    lp.unit_save_filter_mode = "all"
+    lp.unit_aabb_margin = 0.0
+    lp.unit_aabb_margin_ratio = 0.02
+    lp.unit_train_prune_mode = "none"
+    lp.unit_train_prune_from_iter = 0
+    lp.unit_train_prune_until_iter = 30_000
+    lp.unit_train_prune_interval = 100
+    lp.unit_merge_filter_mode = "none"
+    lp.unit_merge_strict_iteration = False
+    lp.grid_pretrain_filter_mode = "none"
+    lp.grid_pretrain_filter_padding = 0.0
     lp.overlap_ratio = 0.0
     lp.overlap_freeze = False
     lp.freeze_after_iter = 3000
