@@ -1,5 +1,156 @@
 # 진행 상황
 
+## 2026-06-04
+
+- grid-only second pass 실험을 완료했다.
+  - 목표: 현재 best인
+    `w2_filtered_manual_passage_no415_manual_units30k_to_citygs_xz10_30000`
+    merged grid 30k 결과를 다시 xz10 grid로 repartition해서 30000 iteration
+    학습한다.
+  - config:
+    `config/smoke_test/w2_filtered_manual_passage_no415_best_grid30k_to_citygs_xz10_30000.yaml`
+  - output:
+    `output/w2_filtered_manual_passage_no415_best_grid30k_to_citygs_xz10_30000`
+  - log:
+    `logs/20260604_w2_best_grid30k_to_citygs_xz10_30000.log`
+  - pretrain cell counts:
+    `[0, 755829, 615137, 147213, 3, 0, 135829, 844931, 476400, 2]`
+  - empty PLYs were prepared for cells `0` and `5`; cells `4` and `9`
+    remain a risk because they start from only `3` and `2` pretrain
+    Gaussians.
+  - result: `SSIM 0.8488`, `PSNR 22.7897`, `LPIPS 0.3780`,
+    merged Gaussians `868,154`
+  - previous best 대비 `SSIM -0.0102`, `PSNR -0.6576`,
+    `LPIPS +0.0180`으로 악화했다. PSNR 개선 view는 `7/36`개뿐이다.
+  - 결론: grid30k -> manual-unit30k 실패 branch보다는 훨씬 낫지만,
+    current best를 대체하지 않는다.
+  - run note:
+    `docs/reports/20260604_w2_grid30k_secondpass_30000.md`
+- grid30k -> manual-unit30k 후속 실험을 완료했다.
+  - output: `output/w2_filtered_manual_passage_no415_best_grid30k_to_manual_units_30000`
+  - metrics: `SSIM 0.7822`, `PSNR 15.9809`, `LPIPS 0.4517`, merged Gaussians `7,248,911`
+  - 이전 best `w2_filtered_manual_passage_no415_manual_units30k_to_citygs_xz10_30000` 대비 `PSNR -7.4664`, `SSIM -0.0767`, `LPIPS +0.0917`로 크게 악화했다.
+  - overlap diagnostic에서는 모든 unit의 `outside_expanded=0`이지만, `411<->412 mean 0.835`, `401<->passage1 mean 0.739`, `passage1<->passage2 mean 0.670`처럼 close-center overlap이 매우 높다.
+  - 결론: 이 branch는 current best가 아니며, conflict-aware merge나 post-merge deduplication 없이는 이어가지 않는다. 상세 기록: `docs/reports/20260604_w2_grid30k_to_manual_units_30000.md`
+- 현재 best 36-view candidate인
+  `w2_filtered_manual_passage_no415_manual_units30k_to_citygs_xz10_30000`
+  grid 30k 결과를 manual-unit 10분할로 다시 30000 iteration 학습하는
+  후속 실험을 시작했다.
+  - config:
+    `config/smoke_test/w2_filtered_manual_passage_no415_best_grid30k_to_manual_units_30000.yaml`
+  - output:
+    `output/w2_filtered_manual_passage_no415_best_grid30k_to_manual_units_30000`
+  - log:
+    `logs/20260604_w2_best_grid30k_to_manual_units_30000.log`
+  - command:
+    `CONFIG=smoke_test/w2_filtered_manual_passage_no415_best_grid30k_to_manual_units_30000 RANGE_FILE=data/W2_4_3_merge_rooms_with_passage_v3_undistorted/sub_passage_manual_no415.txt PYTHON_BIN=.venv/bin/python GPU_RETRY_SECONDS=10 START_DELAY_SECONDS=20 PORT=7000 TRAIN_EXTRA_ARGS='--max_cache_num 256' SKIP_EXISTING_CELLS=1 RUN_RENDER=1 RUN_METRICS=1 ./scripts/run_colmap_unit_citygs_filtered_subtxt_no415_pruned_units.sh`
+  - pretrain bounds diagnostic:
+    `output/w2_filtered_manual_passage_no415_best_grid30k_to_manual_units_30000/diagnostics/unit_pretrain_counts_iter30000.json`
+  - all 10 manual units have non-empty pretrain bounds counts; largest units are
+    `passage1` (`1,466,913`) and `passage3` (`1,589,714`), so passage density
+    conflict remains the main risk.
+  - run note:
+    `docs/reports/20260604_w2_grid30k_to_manual_units_30000.md`
+
+## 2026-06-03
+
+- W2 강의실/복도 분할 실험에서는 overlap-aware partition/training/merge를 일단 보류하기로 결정했다.
+  - 보류 대상: `data_partition_overlap.py`, `train_large_overlap.py`, `merge_overlap.py`, `config/g1_overlap15*.yaml`, `config/g2_overlap25*.yaml`
+  - 현재 W2 실험 축은 `partition_mode: colmap_unit` 기반의 단일 소유 camera assignment, point/core-point 정리, train-time bounds pruning, merge-time bounds filtering을 우선 안정화한다.
+  - `unit_aabb_margin`은 bounds padding이며, 여러 block이 같은 camera를 공유하는 overlap-aware 학습이 아니다.
+- 최근 `subtxt_no415_pruned_units` 및 `subtxt_passage_manual_no415_pruned_units` 실행은 overlap-aware 실험이 아니라 single-owner colmap unit 실험으로 분류한다.
+- 수동 passage split 기준 1000-iteration smoke 결과는 `docs/reports/20260603_subtxt_passage_manual_no415_pruned_unit_1000.md`에 기록했다.
+- single-owner 추천 경로의 bounds/overlap 진단 도구를 `tools/analyze_unit_gaussian_overlap.py`로 추가했고, 1000-iteration 결과 비교는 `docs/reports/20260603_single_owner_overlap_diagnostic_1000.md`에 기록했다.
+- 수동 passage split 기준 15000-iteration 학습, merge, 선택 view render를 완료했다.
+  - output: `output/scene_W2_4_3_merged_rooms_passage_v3_no405410416_filtered_subtxt_passage_manual_no415_pruned_units_15000`
+  - merged Gaussians: `4,991,356`
+  - 선택 36-view metrics: `SSIM 0.7785`, `PSNR 15.5608`, `LPIPS 0.4366`
+  - 시각 확인 결과 merged render는 여전히 뿌연/흐림 현상이 크며, 특히 passage 및 방-복도 접점이 문제로 보인다.
+  - 상세 기록: `docs/reports/20260603_subtxt_passage_manual_no415_pruned_unit_15000.md`
+- 같은 수동 passage split을 원래 CityGaussian 순서대로 coarse 30000 후
+  unit 15000으로 다시 실행했다.
+  - coarse config: `config/smoke_test/w2_filtered_manual_passage_no415_coarse_30000.yaml`
+  - unit config: `config/smoke_test/w2_filtered_manual_passage_no415_coarsefirst_units_15000.yaml`
+  - output: `output/w2_filtered_manual_passage_no415_coarsefirst_units_15000`
+  - coarse output: `output/w2_filtered_manual_passage_no415_coarse_30000/point_cloud/iteration_30000/point_cloud.ply`
+  - merged Gaussians: `4,896,739`
+  - 선택 36-view metrics: `SSIM 0.7827`, `PSNR 15.8134`, `LPIPS 0.4396`
+  - non-coarse 15k 대비 `SSIM +0.0042`, `PSNR +0.2526`,
+    `LPIPS +0.0030`으로 수치 개선은 작고, 시각 품질은 여전히 불만족스럽다.
+  - bounds diagnostic에서는 모든 unit의 expanded bounds leakage가 `0`이지만,
+    cross-unit close-center overlap이 여전히 크다. 주요 pair:
+    `411<->412 mean 0.814`, `401<->passage1 mean 0.772`,
+    `412<->passage3 mean 0.723`, `passage2<->passage3 mean 0.650`,
+    `passage1<->passage2 mean 0.628`.
+  - 결론: coarse-first 순서 자체는 성공했지만 30k unit run으로 그대로
+    승격하지 않는다. 다음은 high-overlap pair 중심의 merge/post-merge
+    conflict cleanup 또는 tighter merge pruning을 먼저 검증한다.
+  - 상세 기록: `docs/reports/20260603_subtxt_passage_manual_no415_pruned_unit_coarsefirst_15000.md`
+- manual-unit 결과를 유지하는 대신 기존 CityGaussian식 xz10 grid로 다시
+  쪼개는 15000-iteration follow-up 두 가지를 완료했다.
+  - coarse 30k 결과 -> xz10 grid 15k:
+    `output/w2_filtered_manual_passage_no415_coarse_citygs_xz10_15000`
+    - merged Gaussians: `1,357,239`
+    - 선택 36-view metrics: `SSIM 0.8241`, `PSNR 20.3612`,
+      `LPIPS 0.4034`
+  - coarse-first manual-unit 15k merged 결과 -> xz10 grid 15k:
+    `output/w2_filtered_manual_passage_no415_repartition_merged15k_citygs_xz10_15000`
+    - merged Gaussians: `1,895,774`
+    - 선택 36-view metrics: `SSIM 0.8428`, `PSNR 21.7425`,
+      `LPIPS 0.3811`
+    - `grid_pretrain_filter_mode=bounds`를 사용했고, filtered pretrain이
+      없는 grid cells `0`, `4`, `5`, `9`는 0-vertex PLY로 명시 처리했다.
+  - contact sheet 기준으로도 manual-unit 계열보다 grid 계열이 훨씬
+    안정적이다. 다만 `00004`, `00005`, `00008`, `00029`, `00035` 등 일부
+    문/복도 경계 프레임에는 흐림과 번짐이 남아 있다.
+  - 현재 30k 후보는
+    `w2_filtered_manual_passage_no415_repartition_merged15k_citygs_xz10_15000`
+    경로다.
+  - 상세 기록: `docs/reports/20260603_grid_citygs_xz10_followups_15000.md`
+- W2 30k follow-up sequence를 완료하고 분석했다.
+  - 1단계: best grid 15k merged 결과 ->
+    `w2_filtered_manual_passage_no415_best_grid15k_to_citygs_xz10_30000`
+    완료
+    - merged Gaussians: `2,076,198`
+    - 선택 36-view metrics: `SSIM 0.8566`, `PSNR 23.3606`,
+      `LPIPS 0.3641`
+  - 2단계: coarse 30k 재사용 -> manual-unit 30k merged 모델
+    `w2_filtered_manual_passage_no415_manual_units_coarse30k_30000`
+    완료
+    - merged Gaussians: `5,980,856`
+    - 선택 36-view metrics: `SSIM 0.7766`, `PSNR 15.3306`,
+      `LPIPS 0.4489`
+    - 직접 렌더 모델로는 15k manual-unit보다 악화
+  - 3단계: manual-unit 30k merged 모델 -> xz10 grid 30k
+    `w2_filtered_manual_passage_no415_manual_units30k_to_citygs_xz10_30000`
+    완료
+    - merged Gaussians: `2,057,987`
+    - 선택 36-view metrics: `SSIM 0.8590`, `PSNR 23.4473`,
+      `LPIPS 0.3600`
+    - 현재 36-view 기준 best render candidate
+  - 완료 시각: `2026-06-04T02:14:36+0000`
+  - logs:
+    `logs/20260603_w2_best_grid15k_to_citygs_xz10_30000.log`,
+    `logs/20260603_w2_manual_units_coarse30k_30000.log`,
+    `logs/20260603_w2_manual_units30k_to_citygs_xz10_30000.log`,
+    `logs/20260603_w2_30k_followup_sequence.log`
+  - 주의: metrics는 `Train cameras: 36, Test cameras: 0`인
+    `manual_passage_review_15000` 기준이며, held-out 일반화 지표가 아니다.
+    xz10 grid cells `0`, `4`, `5`, `9`는 여전히 empty cell이고,
+    manual-unit partition에는 `679/6580` camera 미매칭 경고가 남아 있다.
+  - 상세 runbook:
+    `docs/reports/20260603_w2_30k_followup_runbook.md`
+  - 상세 분석:
+    `docs/reports/20260604_w2_30k_followup_analysis.md`
+- overlap 보류 결정과 재개 조건은 `docs/reports/20260603_overlap_deferred_for_w2_room_passage.md`에 별도 기록했다.
+
+## 2026-04-06
+
+- 이전 임시 `RTX 4060 Ti 16GB` 서버 기준 setup 메모를 `docs/legacy/20260321_local_setup_prev_server.md`로 분리했다.
+- 이전/현재 서버 비교 문서와 worktree 이관 판단 문서를 `docs/legacy/`로 이동해 historical context로 분류했다.
+- 이전 16GB 복구 스크립트는 `scripts/legacy/run_subset_progression_resume.sh`로 아카이브했고, 현재 기본 progression 경로는 `scripts/run_subset_progression_current_server.sh`로 정리했다.
+- 루트 `LOCAL_SETUP_NOTES.md`는 현재 서버 기준 active setup 메모로 갱신했다.
+
 ## 2026-03-21
 
 - `Todo/README.md`, `Todo/G1_G2_implementation_plan.md`, `LOCAL_SETUP_NOTES.md`, `CLAUDE.md` 기준으로 G1/G2 overlap 구조 설계를 정리했다.
@@ -19,7 +170,7 @@
   - 전체 test: `SSIM 0.7405`, `PSNR 25.3124`, `LPIPS 0.4607`
   - strict boundary-view 48장: `SSIM 0.7211`, `PSNR 24.7609`, `LPIPS 0.4822`, `projected boundary LPIPS 0.4534`
   - 4060 Ti 16GB에서는 block 학습 중 `max_cache_num 64`가 OOM을 일으켜 `max_cache_num 32`와 `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`를 기본 fallback으로 확정했다.
-- `config/g1_overlap15_subset_5k.yaml` 기준 G1 5k는 partition과 cell0 5k 학습까지 완료했고, 나머지 `G1 5k -> 10k progression`은 `scripts/run_subset_progression_resume.sh`로 이어서 재시작 가능하게 정리했다.
+- `config/g1_overlap15_subset_5k.yaml` 기준 G1 5k는 partition과 cell0 5k 학습까지 완료했고, 나머지 `G1 5k -> 10k progression`은 현재 `scripts/legacy/run_subset_progression_resume.sh`로 보관된 복구 스크립트로 이어서 재시작 가능하게 정리했다.
 
 ## 2026-03-22
 
@@ -49,7 +200,7 @@
     - `logs/20260322_162431_subset_10k_progression_cache16.log`
     - `logs/20260322_162431_subset_10k_progression_cache16_gpu.csv`
     - `logs/20260322_162431_subset_10k_progression_cache16_meta.txt`
-  - `scripts/run_subset_progression_resume.sh`는 `TRAIN_EXTRA_ARGS`를 받아 checkpoint 저장 인자를 block 학습에 전달하도록 확장했다.
+- 현재 `scripts/legacy/run_subset_progression_resume.sh`로 보관된 복구 스크립트는 `TRAIN_EXTRA_ARGS`를 받아 checkpoint 저장 인자를 block 학습에 전달하도록 확장했다.
   - 결과: `MAX_CACHE_NUM=16`에서도 `cell1`이 `step 3550` 부근 densification 중 다시 `torch.OutOfMemoryError`로 중단
   - 에러: `Tried to allocate 36.00 MiB`, 당시 free VRAM `27.31 MiB`
   - 중간 checkpoint `output/mc_small_aerial_subset_c4_10k/cells/cell1/chkpnt3500.pth`는 저장됨

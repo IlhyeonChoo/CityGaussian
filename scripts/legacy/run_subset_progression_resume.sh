@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
+# Legacy note: archived 16GB recovery flow.
+# Use scripts/run_subset_progression_current_server.sh as the default current
+# server progression entrypoint.
+
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT_DIR"
 
 PYTHON_BIN="${PYTHON_BIN:-$ROOT_DIR/.venv/bin/python}"

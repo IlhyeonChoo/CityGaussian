@@ -97,6 +97,8 @@ CityGaussianV1/
 - 에이전트별 상세 역할, 검증 범위, handoff 형식은 `.codex/agents/README.md`부터 확인한다.
 - 예전 문서나 진행 기록에 남아 있는 `CLAUDE.md` 참조는 당시 운영 체계를 설명하는
   역사적 기록으로만 해석한다.
+- 이전 16GB 서버 setup/migration 메모는 `docs/legacy/` 아래로 분리했으며,
+  active setup은 `LOCAL_SETUP_NOTES.md`와 `scripts/*current_server*.sh` 기준으로 본다.
 
 ---
 
@@ -266,7 +268,7 @@ python tools/plot_results.py --results_dir output/ --groups mc_small_aerial_c36 
   - coarse 10k 완료
   - G0 10k는 `cell0` 완료, `cell1`은 `step 3819`에서 중단, `OOM 의심`
   - G1 10k는 미시작
-- RTX 4060 Ti 로컬(`VRAM 16GB`)에서는 block 학습 시 `max_cache_num 32`와 `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`를 기본 재시도 기준으로 사용한다.
+- legacy `RTX 4060 Ti (VRAM 16GB)` pilot에서는 block 학습 시 `max_cache_num 32`와 `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`를 기본 재시도 기준으로 사용했다.
 
 ---
 

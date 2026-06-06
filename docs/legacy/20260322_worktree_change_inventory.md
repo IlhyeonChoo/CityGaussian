@@ -1,5 +1,9 @@
 # 2026-03-22 Worktree 변경 인벤토리
 
+> Legacy note: this document captured migration-time 판단 기준 while moving off
+> the temporary 16GB server. Use `LOCAL_SETUP_NOTES.md` and current-server
+> scripts for active execution.
+
 - 목적:
   - 로컬 `RTX 4060 Ti (VRAM 16GB)`에서 smoke, 5k, 10k pilot을 돌리면서 생긴 변경을 서버 이관 판단용으로 정리한다.
   - 아래 분류 기준은 `서버에서 그대로 유지`, `서버 환경에 따라 선택 적용`, `로컬 전용이라 없어도 됨`으로 나눈다.
@@ -54,12 +58,12 @@
 
 | 경로 | 변경 내용 | 성격 | 서버 권장 조치 |
 |------|-----------|------|----------------|
-| `scripts/run_subset_progression_resume.sh` | subset 5k/10k progression 재시작, skip-safe 실행, filtered eval 자동화 | 운영 자동화 | 서버에서 같은 subset progression을 이어갈 때 유용. 아니면 선택 |
+| `scripts/legacy/run_subset_progression_resume.sh` | subset 5k/10k progression 재시작, skip-safe 실행, filtered eval 자동화 | 운영 자동화 | legacy 16GB 복구 흐름 보존용. 현재 서버 기본 경로로는 사용하지 않음 |
 | `scripts/run_with_gpu_monitor.sh` | stdout/stderr + `nvidia-smi` 메모리 추이를 함께 저장 | 로컬 운영/OOM 분석 | 서버에서 OOM 원인 확인이 필요하면 유용. 아니면 필수 아님 |
 
 추가 메모:
 
-- `scripts/run_subset_progression_resume.sh`에는 이후 `TRAIN_EXTRA_ARGS` 전달 기능을 넣어 checkpoint 저장 인자를 block 학습에 넘길 수 있게 했다.
+- 현재 `scripts/legacy/run_subset_progression_resume.sh`로 보관된 스크립트에는 이후 `TRAIN_EXTRA_ARGS` 전달 기능을 넣어 checkpoint 저장 인자를 block 학습에 넘길 수 있게 했다.
 - `scripts/run_with_gpu_monitor.sh`는 실험 결과 자체를 바꾸지 않는다. 로그를 더 남기는 운영 도구다.
 
 ## 4. 문서 및 결과 기록
@@ -100,7 +104,7 @@
 - `docs/reports/G0_G1_20260321_subset4_compare_and_feasibility.md`
 - `docs/reports/G0_G1_20260322_subset4_5k_canonical.md`
 - `docs/reports/G1_20260321_overlap15_subset_smoke.md`
-- `scripts/run_subset_progression_resume.sh`
+- `scripts/legacy/run_subset_progression_resume.sh`
 - `scripts/run_with_gpu_monitor.sh`
 - `tools/filtered_metrics.py`
 - `tools/projected_boundary_lpips.py`
@@ -122,7 +126,7 @@
   - `LargeLightGaussian/*`의 파일 핸들 안정화 패치
 - 서버에서 없어도 되는 로컬 운영 도구:
   - `scripts/run_with_gpu_monitor.sh`
-  - `scripts/run_subset_progression_resume.sh`
+  - `scripts/legacy/run_subset_progression_resume.sh`
 - 데이터 준비 상황에 따라 선택:
   - `tools/prepare_matrixcity_small_aerial_v1.py`
 

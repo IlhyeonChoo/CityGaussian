@@ -1,5 +1,9 @@
 # 이전 서버 vs 현재 서버 상태 비교
 
+> Legacy note: this document is a 2026-03-23 migration snapshot captured before
+> the current-server setup notes were refreshed. Use `LOCAL_SETUP_NOTES.md` for
+> the active setup baseline.
+
 - 작성일: 2026-03-23
 - 목적: 임시 16GB 서버에서 진행하던 subset 실험 상태와, 현재 다시 복귀한 32GB 서버 워크스페이스 상태를 한 번에 비교할 수 있게 정리한다.
 - 범위:
@@ -58,7 +62,7 @@
 
 - `third_party_patches/README.md`
 - `LOCAL_SETUP_NOTES.md`
-- `docs/reports/20260322_worktree_change_inventory.md`
+- `docs/legacy/20260322_worktree_change_inventory.md`
 
 ### 실험 코드 구현 범위
 
@@ -89,7 +93,7 @@
 - `docs/reports/G1_20260321_overlap15_subset_smoke.md`
 - `docs/reports/G0_G1_20260321_subset4_compare_and_feasibility.md`
 - `docs/reports/G0_G1_20260322_subset4_5k_canonical.md`
-- `docs/reports/20260322_worktree_change_inventory.md`
+- `docs/legacy/20260322_worktree_change_inventory.md`
 
 ## 산출물 / 데이터 비교
 
